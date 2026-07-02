@@ -56,13 +56,13 @@ model Project {
 
 // Project Design Document
 model ProjectDesignDoc {
-  id          String   @id @default(uuid()) @db.Uuid
-  projectId   String   @unique @db.Uuid
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @unique @db.Uuid @map("project_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@map("project_design_docs")
@@ -71,12 +71,12 @@ model ProjectDesignDoc {
 // Project Generated Stories
 model ProjectStory {
   id                  String   @id @default(uuid()) @db.Uuid
-  projectId           String   @db.Uuid
+  projectId           String   @db.Uuid @map("project_id")
   title               String
   description         String   @db.Text
-  acceptanceCriteria  String[]
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  acceptanceCriteria  String[] @map("acceptance_criteria")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -86,13 +86,13 @@ model ProjectStory {
 
 // Project Notes
 model ProjectNote {
-  id          String   @id @default(uuid()) @db.Uuid
-  projectId   String   @db.Uuid
-  content     String   @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @db.Uuid @map("project_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@map("project_notes")
