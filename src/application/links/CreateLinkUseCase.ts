@@ -4,7 +4,7 @@
 
 import { UseCase, UUID, createUUID } from '@/src/domain/shared/types';
 import { Link } from '@/src/domain/links/entities/Link';
-import { ILinkRepository } from '@/src/domain/links/interfaces/ILinkRepository';
+import type { ILinkRepository } from '@/src/domain/links/interfaces/ILinkRepository';
 import { CreateLinkDTO, LinkResponseDTO } from '../dto';
 
 export class CreateLinkUseCase implements UseCase<CreateLinkUseCaseInput, LinkResponseDTO> {

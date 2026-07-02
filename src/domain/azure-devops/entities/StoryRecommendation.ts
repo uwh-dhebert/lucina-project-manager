@@ -3,7 +3,7 @@
  * AI recommendations for story sizing
  */
 
-import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../shared/types';
+import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../../shared/types';
 
 export type StoryRecommendationId = UUID;
 export type StorySize = 'xs' | 'small' | 'medium' | 'large' | 'xl';
@@ -175,6 +175,19 @@ export class StoryRecommendation implements AggregateRoot<StoryRecommendationId>
   }
 
   getUpdatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  // Interface properties for Entity/AggregateRoot
+  get id(): StoryRecommendationId {
+    return this.props.id;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
     return this.props.updatedAt;
   }
 

@@ -3,7 +3,7 @@
  * Messages for Grok chatbot with RAG support
  */
 
-import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../shared/types';
+import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../../shared/types';
 
 export type ChatMessageId = UUID;
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -124,6 +124,19 @@ export class ChatMessage implements AggregateRoot<ChatMessageId> {
   }
 
   getUpdatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  // Interface properties for Entity/AggregateRoot
+  get id(): ChatMessageId {
+    return this.props.id;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
     return this.props.updatedAt;
   }
 

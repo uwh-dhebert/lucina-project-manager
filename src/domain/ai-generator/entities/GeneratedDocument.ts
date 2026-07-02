@@ -3,7 +3,7 @@
  * Design documents generated using AI
  */
 
-import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../shared/types';
+import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../../shared/types';
 
 export type GeneratedDocumentId = UUID;
 export type DocumentTemplate = 'dan-hebert' | 'custom' | 'design-doc' | 'implementation-plan';
@@ -174,6 +174,19 @@ export class GeneratedDocument implements AggregateRoot<GeneratedDocumentId> {
   }
 
   getUpdatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  // Interface properties for Entity/AggregateRoot
+  get id(): GeneratedDocumentId {
+    return this.props.id;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
     return this.props.updatedAt;
   }
 

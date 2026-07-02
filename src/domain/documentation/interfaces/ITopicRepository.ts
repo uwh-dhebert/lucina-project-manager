@@ -2,8 +2,8 @@
  * Documentation Domain - Repository Interface
  */
 
-import { Topic, TopicId } from './entities/Topic';
-import { Repository, UUID } from '../shared/types';
+import { Topic, TopicId } from '../entities/Topic';
+import { Repository, UUID } from '../../shared/types';
 
 export interface ITopicRepository extends Repository<Topic> {
   findByProjectId(projectId: UUID): Promise<Topic[]>;
@@ -12,5 +12,5 @@ export interface ITopicRepository extends Repository<Topic> {
   findByProjectIdOrdered(projectId: UUID): Promise<Topic[]>;
 }
 
-export const ITopicRepository = Symbol('ITopicRepository');
+export const ITopicRepositoryToken = Symbol('ITopicRepository');
 

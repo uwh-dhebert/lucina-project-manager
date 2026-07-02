@@ -3,7 +3,7 @@
  * Core business logic for projects
  */
 
-import { AggregateRoot, UUID, DomainEvent, InvalidEntityException } from '../shared/types';
+import { AggregateRoot, UUID, DomainEvent, InvalidEntityException } from '../../shared/types';
 
 export type ProjectId = UUID;
 
@@ -108,6 +108,19 @@ export class Project implements AggregateRoot<ProjectId> {
   }
 
   getUpdatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  // Interface properties for Entity/AggregateRoot
+  get id(): ProjectId {
+    return this.props.id;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
     return this.props.updatedAt;
   }
 

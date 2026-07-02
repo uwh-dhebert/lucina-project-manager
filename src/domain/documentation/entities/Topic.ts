@@ -3,7 +3,7 @@
  * Markdown-based wiki topics within projects
  */
 
-import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../shared/types';
+import { AggregateRoot, UUID, InvalidEntityException, DomainEvent } from '../../shared/types';
 
 export type TopicId = UUID;
 
@@ -123,6 +123,19 @@ export class Topic implements AggregateRoot<TopicId> {
   }
 
   getUpdatedAt(): Date {
+    return this.props.updatedAt;
+  }
+
+  // Interface properties for Entity/AggregateRoot
+  get id(): TopicId {
+    return this.props.id;
+  }
+
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+
+  get updatedAt(): Date {
     return this.props.updatedAt;
   }
 

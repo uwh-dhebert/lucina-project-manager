@@ -4,7 +4,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { Project, ProjectId } from '@/src/domain/projects/entities/Project';
-import { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
+import type { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
 import { UUID, EntityNotFoundException } from '@/src/domain/shared/types';
 
 export class PrismaProjectRepository implements IProjectRepository {
@@ -45,7 +45,7 @@ export class PrismaProjectRepository implements IProjectRepository {
       ownerId: data.ownerId as UUID,
       name: data.name,
       slug: data.slug,
-      description: data.description,
+      description: data.description ?? '',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     });
@@ -69,7 +69,7 @@ export class PrismaProjectRepository implements IProjectRepository {
         ownerId: data.ownerId as UUID,
         name: data.name,
         slug: data.slug,
-        description: data.description,
+        description: data.description ?? '',
         createdAt: data.createdAt,
         updatedAt: data.updatedAt,
       })
@@ -91,7 +91,7 @@ export class PrismaProjectRepository implements IProjectRepository {
       ownerId: data.ownerId as UUID,
       name: data.name,
       slug: data.slug,
-      description: data.description,
+      description: data.description ?? '',
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     });

@@ -4,7 +4,7 @@
 
 import { UseCase, UUID, createUUID } from '@/src/domain/shared/types';
 import { Project } from '@/src/domain/projects/entities/Project';
-import { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
+import type { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
 import { CreateProjectDTO, ProjectResponseDTO } from '../dto';
 
 export class CreateProjectUseCase implements UseCase<CreateProjectUseCaseInput, ProjectResponseDTO> {

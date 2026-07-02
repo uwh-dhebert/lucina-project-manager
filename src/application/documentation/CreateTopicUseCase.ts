@@ -4,8 +4,8 @@
 
 import { UseCase, UUID, createUUID, EntityNotFoundException } from '@/src/domain/shared/types';
 import { Topic } from '@/src/domain/documentation/entities/Topic';
-import { ITopicRepository } from '@/src/domain/documentation/interfaces/ITopicRepository';
-import { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
+import type { ITopicRepository } from '@/src/domain/documentation/interfaces/ITopicRepository';
+import type { IProjectRepository } from '@/src/domain/projects/interfaces/IProjectRepository';
 import { CreateTopicDTO, TopicResponseDTO } from '../dto';
 
 export class CreateTopicUseCase implements UseCase<CreateTopicUseCaseInput, TopicResponseDTO> {
@@ -16,9 +16,10 @@ export class CreateTopicUseCase implements UseCase<CreateTopicUseCaseInput, Topi
 
   async execute(input: CreateTopicUseCaseInput): Promise<TopicResponseDTO> {
     // Verify project exists
-    const project = await this.projectRepository.findById(input.dto.projectId as any);
+    const projectId = createUUID(input.dto.projectId);
+    const project = await this.projectRepository.findById(projectId);
     if (!project) {
-      throw new EntityNotFoundException('Project', input.dto.projectId as any);
+      throw new EntityNotFoundException('Project', projectId);
     }
 
     const topicId = createUUID(this.generateId());
@@ -26,7 +27,7 @@ export class CreateTopicUseCase implements UseCase<CreateTopicUseCaseInput, Topi
 
     const topic = Topic.create(
       topicId,
-      input.dto.projectId as any,
+      projectId,
       input.dto.title,
       order,
       input.dto.content

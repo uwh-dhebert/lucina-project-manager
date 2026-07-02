@@ -2,8 +2,8 @@
  * AI Generator Domain - Repository Interface
  */
 
-import { GeneratedDocument, GeneratedDocumentId } from './entities/GeneratedDocument';
-import { Repository, UUID } from '../shared/types';
+import { GeneratedDocument, GeneratedDocumentId } from '../entities/GeneratedDocument';
+import { Repository, UUID } from '../../shared/types';
 
 export interface IGeneratedDocumentRepository extends Repository<GeneratedDocument> {
   findByProjectId(projectId: UUID): Promise<GeneratedDocument[]>;
@@ -12,5 +12,5 @@ export interface IGeneratedDocumentRepository extends Repository<GeneratedDocume
   findByStatus(status: 'draft' | 'review' | 'approved'): Promise<GeneratedDocument[]>;
 }
 
-export const IGeneratedDocumentRepository = Symbol('IGeneratedDocumentRepository');
+export const IGeneratedDocumentRepositoryToken = Symbol('IGeneratedDocumentRepository');
 

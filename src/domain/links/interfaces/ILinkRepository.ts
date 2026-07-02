@@ -2,8 +2,8 @@
  * Links Domain - Repository Interface
  */
 
-import { Link, LinkId } from './entities/Link';
-import { Repository, UUID } from '../shared/types';
+import { Link, LinkId } from '../entities/Link';
+import { Repository, UUID } from '../../shared/types';
 
 export interface ILinkRepository extends Repository<Link> {
   findByUserId(userId: UUID): Promise<Link[]>;
@@ -12,5 +12,5 @@ export interface ILinkRepository extends Repository<Link> {
   findByCategory(category: string): Promise<Link[]>;
 }
 
-export const ILinkRepository = Symbol('ILinkRepository');
+export const ILinkRepositoryToken = Symbol('ILinkRepository');
 
