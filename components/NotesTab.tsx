@@ -193,8 +193,8 @@ export function NotesTab({ projectId }: NotesTabProps) {
                   <p className="text-white whitespace-pre-wrap">{note.content}</p>
                   <div className="flex justify-between items-center">
                     <p className="text-xs text-slate-400">
-                      {new Date(note.updatedAt).toLocaleDateString()} at{' '}
-                      {new Date(note.updatedAt).toLocaleTimeString([], {
+                      {new Date(note.updatedAt || note.createdAt).toLocaleDateString()} at{' '}
+                      {new Date(note.updatedAt || note.createdAt).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}

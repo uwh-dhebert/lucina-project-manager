@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { WikiSidebar } from '@/components/WikiSidebar';
 
@@ -12,9 +12,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Only show wiki sidebar on wiki pages
+  const isWikiPage = pathname.includes('/wiki');
 
   useEffect(() => {
     const getUser = async () => {
@@ -90,18 +94,20 @@ export default function DashboardLayout({
         </div>
       </nav>
 
-      {/* Main Container with Sidebar */}
-      <div className="flex flex-1">
-        {/* Sidebar */}
-        <aside className="hidden lg:flex w-64 border-r border-slate-700 bg-slate-900/50 flex-col overflow-hidden">
-          <WikiSidebar />
-        </aside>
+       {/* Main Container with Sidebar */}
+       <div className="flex flex-1">
+         {/* Sidebar - Only on wiki pages */}
+         {isWikiPage && (
+           <aside className="hidden lg:flex w-64 border-r border-slate-700 bg-slate-900/50 flex-col overflow-hidden">
+             <WikiSidebar />
+           </aside>
+         )}
 
-        {/* Main Content */}
-        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
-          {children}
-        </main>
-      </div>
+         {/* Main Content */}
+         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
+           {children}
+         </main>
+       </div>
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-sm text-slate-500 border-t border-slate-700 mt-12 w-full">
