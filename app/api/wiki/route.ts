@@ -1,0 +1,94 @@
+import { createClient } from '@/utils/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
+
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Fetch all topics with their subjects and content items
+    const { data: topics, error } = await supabase
+      .from('topics')
+      .select('*, subjects(*, contentItems:content_items(*))')
+      .order('order', { ascending: true })
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(topics || [])
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { title } = body
+
+    if (!title) {
+      return NextResponse.json(
+        { error: 'Topic title is required' },
+        { status: 400 }
+      )
+    }
+
+    // Generate slug from title
+    const slug = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+
+    // Get the next order value
+    const { data: lastTopic } = await supabase
+      .from('topics')
+      .select('order')
+      .order('order', { ascending: false })
+      .limit(1)
+
+    const order = (lastTopic?.[0]?.order ?? 0) + 1
+
+    // Create topic
+    const topicId = randomUUID()
+    const now = new Date().toISOString()
+
+    const { data: topic, error } = await supabase
+      .from('topics')
+      .insert({
+        id: topicId,
+        title,
+        slug,
+        order,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json(topic, { status: 201 })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+

@@ -3,6 +3,7 @@
 import { Home, FolderOpen, Sparkles, Users, Settings, Menu } from 'lucide-react';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
+import { WikiSidebar } from '@/components/WikiSidebar';
 
 export function AppSidebar() {
   return (
@@ -48,6 +49,10 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Wiki Tree Navigation */}
+        <div className="border-t border-slate-700 my-2" />
+        <WikiSidebar />
       </SidebarContent>
     </Sidebar>
   );

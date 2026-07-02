@@ -1,10 +1,10 @@
-import { defineConfig } from '@prisma/config'
+// This file is for reference only - actual Prisma configuration is in prisma/schema.prisma
+// Database URL should be provided via DATABASE_URL environment variable
 
-export default defineConfig({
+export const config = {
   schema: './prisma/schema.prisma',
-  datasource: {
-    provider: 'postgresql',
-    url: process.env.DATABASE_URL,
-    directUrl: process.env.DIRECT_URL,
-  },
-})
+  provider: 'postgresql',
+  url: process.env.DATABASE_URL,
+  directUrl: process.env.DIRECT_URL,
+}
+

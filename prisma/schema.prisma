@@ -4,8 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // Auth & User Management
@@ -35,21 +33,174 @@ model AccessRequest {
   @@map("access_requests")
 }
 
-// Core Domain
+// Core Domain - Projects
 model Project {
   id          String   @id @default(uuid()) @db.Uuid
   name        String
+  slug        String
   description String?
   ownerId     String   @db.Uuid
-  status      String   @default("active")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  epics       Epic[]
-  
+  topics                Topic[]
+  generatedDocuments    GeneratedDocument[]
+  storyRecommendations  StoryRecommendation[]
+  epics                 Epic[]
+
+  @@unique([slug, ownerId])
   @@map("projects")
 }
 
+// Documentation - Topics (Wiki - Top Level)
+model Topic {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String   @unique
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjects    Subject[]
+
+  @@map("topics")
+}
+
+// Wiki - Subjects (belong to topics)
+model Subject {
+  id          String   @id @default(uuid()) @db.Uuid
+  topicId     String   @db.Uuid
+  title       String
+  slug        String
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topic         Topic  @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  contentItems  ContentItem[]
+
+  @@unique([slug, topicId])
+  @@index([topicId])
+  @@map("subjects")
+}
+
+// Wiki - Content Items (belong to subjects, optional title)
+model ContentItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  subjectId   String   @db.Uuid
+  title       String?
+  content     String   @db.Text
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@index([subjectId])
+  @@map("content_items")
+}
+
+// ...existing code...
+
+// Links Management
+model Link {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  url         String
+  name        String
+  description String?
+  category    String   @default("general")
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@map("links")
+}
+
+// Chat - Conversations & Messages
+model ChatConversation {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  title       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages    ChatMessage[]
+
+  @@index([userId])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id                  String   @id @default(uuid()) @db.Uuid
+  conversationId      String   @db.Uuid
+  userId              String   @db.Uuid
+  content             String   @db.Text
+  role                String   @default("user")
+  contextDocumentIds  String[]
+  tokens              Int?
+  model               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  conversation        ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([userId])
+  @@map("chat_messages")
+}
+
+// AI Generator - Design Documents
+model GeneratedDocument {
+  id            String   @id @default(uuid()) @db.Uuid
+  projectId     String   @db.Uuid
+  userId        String   @db.Uuid
+  title         String
+  templateType  String
+  content       String   @db.Text
+  sections      Json     @default("[]")
+  status        String   @default("draft")
+  generatedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([status])
+  @@map("generated_documents")
+}
+
+// Azure DevOps - Story Recommendations
+model StoryRecommendation {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  projectId         String?  @db.Uuid
+  storyId           String
+  title             String
+  currentSize       Int?
+  recommendedSize   String
+  confidence        Float
+  reasoning         String   @db.Text
+  recommendation    String   @db.Text
+  tags              String[]
+  accepted          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  project           Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([storyId])
+  @@index([userId])
+  @@index([projectId])
+  @@index([accepted])
+  @@map("story_recommendations")
+}
+
+// Legacy Models - Epic & Story (keeping for backward compatibility)
 model Epic {
   id          String   @id @default(uuid()) @db.Uuid
   projectId   String   @db.Uuid
