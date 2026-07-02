@@ -3,9 +3,10 @@ import { NextResponse } from 'next/server';
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: groupId } = await params;
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -13,7 +14,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const groupId = params.id;
 
     // Verify the group belongs to the user
     const { data: group } = await supabase
