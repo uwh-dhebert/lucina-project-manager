@@ -41,8 +41,8 @@ export async function GET(
     const { data: stories, error } = await supabase
       .from('project_stories')
       .select('*')
-      .eq('projectId', projectId)
-      .order('createdAt', { ascending: false });
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -96,10 +96,10 @@ export async function POST(
     // Insert stories
     const storiesData = stories.map((story: any) => ({
       id: randomUUID(),
-      projectId,
+      project_id: projectId,
       title: story.title,
       description: story.description,
-      acceptanceCriteria: story.acceptanceCriteria || [],
+      acceptance_criteria: story.acceptanceCriteria || [],
     }));
 
     const { data: insertedStories, error } = await supabase
@@ -150,8 +150,8 @@ export async function PUT(
       .update({
         title,
         description,
-        acceptanceCriteria,
-        updatedAt: new Date().toISOString(),
+        acceptance_criteria: acceptanceCriteria,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', storyId)
       .select()

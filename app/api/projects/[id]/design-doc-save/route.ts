@@ -50,7 +50,7 @@ export async function POST(
     const { data: existingDoc } = await supabase
       .from('project_design_docs')
       .select('id')
-      .eq('projectId', projectId)
+      .eq('project_id', projectId)
       .single();
 
     let result;
@@ -58,8 +58,8 @@ export async function POST(
       // Update existing
       const { data, error } = await supabase
         .from('project_design_docs')
-        .update({ content, updatedAt: new Date().toISOString() })
-        .eq('projectId', projectId)
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq('project_id', projectId)
         .select()
         .single();
       result = { data, error };
@@ -68,7 +68,7 @@ export async function POST(
       const { data, error } = await supabase
         .from('project_design_docs')
         .insert({
-          projectId,
+          project_id: projectId,
           content,
         })
         .select()
@@ -129,7 +129,7 @@ export async function GET(
     const { data, error } = await supabase
       .from('project_design_docs')
       .select('*')
-      .eq('projectId', projectId)
+      .eq('project_id', projectId)
       .single();
 
     if (error && error.code !== 'PGRST116') {

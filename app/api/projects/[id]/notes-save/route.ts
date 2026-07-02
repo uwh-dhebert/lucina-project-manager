@@ -41,8 +41,8 @@ export async function GET(
     const { data: notes, error } = await supabase
       .from('project_notes')
       .select('*')
-      .eq('projectId', projectId)
-      .order('createdAt', { ascending: false });
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -98,7 +98,7 @@ export async function POST(
       .from('project_notes')
       .insert({
         id: randomUUID(),
-        projectId,
+        project_id: projectId,
         content,
       })
       .select()
@@ -146,7 +146,7 @@ export async function PUT(
       .from('project_notes')
       .update({
         content,
-        updatedAt: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq('id', noteId)
       .select()
