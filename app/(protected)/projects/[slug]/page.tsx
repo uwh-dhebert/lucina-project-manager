@@ -35,7 +35,22 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     loadProject()
+    loadDesignDoc()
   }, [slug])
+
+  const loadDesignDoc = async () => {
+    try {
+      const response = await fetch(`/api/projects/${project?.id}/design-doc-save`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.designDoc?.content) {
+          setDesignDocContent(data.designDoc.content)
+        }
+      }
+    } catch (err) {
+      console.error('Error loading design doc:', err)
+    }
+  }
 
   const loadProject = async () => {
     try {
@@ -190,6 +205,18 @@ export default function ProjectDetailPage() {
                   <textarea
                     value={designDocContent}
                     onChange={(e) => setDesignDocContent(e.target.value)}
+                    onBlur={async () => {
+                      // Save to database when editing is done
+                      try {
+                        await fetch(`/api/projects/${project?.id}/design-doc-save`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ content: designDocContent }),
+                        });
+                      } catch (err) {
+                        console.error('Error saving design doc:', err);
+                      }
+                    }}
                     className="w-full h-96 px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 ) : (

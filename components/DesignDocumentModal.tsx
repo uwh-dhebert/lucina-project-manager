@@ -78,11 +78,21 @@ export function DesignDocumentModal({
 
   const handleSave = async () => {
     if (!onSave || !markdownContent) return;
-
+    
     setIsSaving(true);
     try {
-      await onSave(markdownContent);
-      // Success message could be shown here
+      // Save to database
+      const response = await fetch(`/api/projects/${projectId}/design-doc-save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: markdownContent }),
+      });
+
+      if (response.ok) {
+        await onSave(markdownContent);
+      } else {
+        setError('Failed to save design document');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save document');
     } finally {

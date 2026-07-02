@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Zap, Plus, Trash2 } from 'lucide-react';
 
 interface Story {
+  id: string;
   title: string;
   description: string;
   acceptanceCriteria: string[];
@@ -18,6 +19,26 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedStory, setExpandedStory] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load stories from database
+  useEffect(() => {
+    loadStories();
+  }, [projectId]);
+
+  const loadStories = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/stories-save`);
+      if (response.ok) {
+        const data = await response.json();
+        setStories(data.stories || []);
+      }
+    } catch (err) {
+      console.error('Error loading stories:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGenerateStories = async () => {
     if (!designDocContent) {
@@ -47,7 +68,9 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
       const data = await response.json();
       const newStories = data.stories || [];
 
-      // Append new stories instead of replacing
+      // Save new stories to database
+      await saveStoriesToDatabase([...stories, ...newStories]);
+
       setStories([...stories, ...newStories]);
       onStoriesGenerated?.([...stories, ...newStories]);
     } catch (err) {
@@ -58,8 +81,50 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
     }
   };
 
-  const handleRemoveStory = (index: number) => {
-    setStories(stories.filter((_, i) => i !== index));
+  const saveStoriesToDatabase = async (storiesToSave: Story[]) => {
+    try {
+      await fetch(`/api/projects/${projectId}/stories-save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stories: storiesToSave }),
+      });
+    } catch (err) {
+      console.error('Error saving stories to database:', err);
+    }
+  };
+
+  const handleRemoveStory = async (index: number) => {
+    const storyToRemove = stories[index];
+    try {
+      await fetch(`/api/projects/${projectId}/stories-save`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storyId: storyToRemove.id }),
+      });
+      setStories(stories.filter((_, i) => i !== index));
+    } catch (err) {
+      setError('Error deleting story');
+      console.error(err);
+    }
+  };
+
+  const handleUpdateStory = async (index: number) => {
+    const updatedStory = stories[index];
+    try {
+      await fetch(`/api/projects/${projectId}/stories-save`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storyId: updatedStory.id,
+          title: updatedStory.title,
+          description: updatedStory.description,
+          acceptanceCriteria: updatedStory.acceptanceCriteria,
+        }),
+      });
+    } catch (err) {
+      setError('Error updating story');
+      console.error(err);
+    }
   };
 
   const handleAddStory = () => {
@@ -71,7 +136,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
     setStories([...stories, newStory]);
   };
 
-  if (stories.length === 0 && !isGenerating) {
+  if (stories.length === 0 && !isGenerating && !isLoading) {
     return (
       <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 min-h-96 flex flex-col items-center justify-center">
         <div className="text-4xl mb-4">📖</div>
@@ -165,6 +230,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
                       const updated = [...stories];
                       updated[index].description = e.target.value;
                       setStories(updated);
+                      handleUpdateStory(index);
                     }}
                     className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={3}
@@ -185,6 +251,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
                           const updated = [...stories];
                           updated[index].acceptanceCriteria[idx] = e.target.value;
                           setStories(updated);
+                          handleUpdateStory(index);
                         }}
                         placeholder={`Criterion ${idx + 1}`}
                         className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
