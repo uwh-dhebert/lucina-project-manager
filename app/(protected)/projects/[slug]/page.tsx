@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { EditProjectModal } from '@/components/EditProjectModal'
 import { DesignDocumentModal } from '@/components/DesignDocumentModal'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
+import { StoriesTab } from '@/components/StoriesTab'
 
 interface Project {
   id: string
@@ -27,6 +29,7 @@ export default function ProjectDetailPage() {
   const [designDocModalOpen, setDesignDocModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'notes' | 'design-doc' | 'stories'>('notes')
   const [designDocContent, setDesignDocContent] = useState<string>('')
+  const [isEditingDesignDoc, setIsEditingDesignDoc] = useState(false)
 
   useEffect(() => {
     loadProject()
@@ -174,10 +177,39 @@ export default function ProjectDetailPage() {
           <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 min-h-96">
             {designDocContent ? (
               <div className="space-y-4">
-                <h3 className="text-xl font-bold text-white">Project Design Document</h3>
-                <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-auto max-h-64 text-slate-300 text-sm whitespace-pre-wrap font-mono">
-                  {designDocContent}
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-white">Project Design Document</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setIsEditingDesignDoc(!isEditingDesignDoc)}
+                      className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                        isEditingDesignDoc
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-slate-700 hover:bg-slate-600 text-white'
+                      }`}
+                    >
+                      {isEditingDesignDoc ? '✓ Done Editing' : '✏️ Edit'}
+                    </button>
+                    <button
+                      onClick={() => setDesignDocModalOpen(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      🔄 Regenerate
+                    </button>
+                  </div>
                 </div>
+
+                {isEditingDesignDoc ? (
+                  <textarea
+                    value={designDocContent}
+                    onChange={(e) => setDesignDocContent(e.target.value)}
+                    className="w-full h-96 px-4 py-3 bg-slate-900 border border-slate-600 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                ) : (
+                  <div className="bg-slate-900 border border-slate-700 rounded-lg p-4 overflow-auto max-h-96 text-slate-300 text-sm">
+                    <MarkdownRenderer content={designDocContent} />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -197,10 +229,13 @@ export default function ProjectDetailPage() {
 
         {activeTab === 'stories' && (
           <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 min-h-96">
-            <h3 className="text-xl font-bold text-white mb-4">Project Stories</h3>
-            <p className="text-slate-400">
-              Project stories and epics will appear here. Connect your project to Azure DevOps to sync stories.
-            </p>
+            <StoriesTab
+              projectId={project.id}
+              designDocContent={designDocContent}
+              onStoriesGenerated={(stories) => {
+                // Stories generated callback
+              }}
+            />
           </div>
         )}
       </div>
