@@ -38,6 +38,9 @@ const SQL_STATEMENTS = [
     slug VARCHAR(255) NOT NULL,
     description TEXT,
     "ownerId" UUID NOT NULL,
+    responsible VARCHAR(255) DEFAULT '',
+    "priorityZone" VARCHAR(50) DEFAULT 'in_design',
+    "priorityOrder" INT DEFAULT 0,
     "createdAt" TIMESTAMP DEFAULT now(),
     "updatedAt" TIMESTAMP DEFAULT now(),
     UNIQUE(slug, "ownerId")
@@ -164,6 +167,7 @@ const SQL_STATEMENTS = [
     "updatedAt" TIMESTAMP DEFAULT now(),
     FOREIGN KEY ("epicId") REFERENCES epics(id) ON DELETE CASCADE
   )`,
+
 ]
 
 export async function POST() {

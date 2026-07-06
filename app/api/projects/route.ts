@@ -69,24 +69,50 @@ export async function POST(request: NextRequest) {
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-');
 
-    // Generate UUID using Node's built-in crypto
     const projectId = randomUUID();
     const now = new Date().toISOString();
 
-    // Create project with explicit ID and timestamps
-    const { data: project, error } = await supabase
+    const baseProject = {
+      id: projectId,
+      name,
+      slug,
+      description: description || '',
+      ownerId: user.id,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const { data: existingInDesign } = await supabase
+      .from('projects')
+      .select('priorityOrder')
+      .eq('ownerId', user.id)
+      .eq('priorityZone', 'in_design')
+      .order('priorityOrder', { ascending: false })
+      .limit(1);
+
+    const nextOrder =
+      existingInDesign?.[0]?.priorityOrder != null
+        ? existingInDesign[0].priorityOrder + 1
+        : 0;
+
+    let { data: project, error } = await supabase
       .from('projects')
       .insert({
-        id: projectId,
-        name,
-        slug,
-        description: description || '',
-        ownerId: user.id,
-        createdAt: now,
-        updatedAt: now,
+        ...baseProject,
+        responsible: '',
+        priorityZone: 'in_design',
+        priorityOrder: nextOrder,
       })
       .select()
       .single();
+
+    if (error?.message?.includes('priorityZone') || error?.message?.includes('priorityOrder')) {
+      ({ data: project, error } = await supabase
+        .from('projects')
+        .insert(baseProject)
+        .select()
+        .single());
+    }
 
     if (error) {
       // Check if table doesn't exist

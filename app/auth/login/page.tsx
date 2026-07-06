@@ -1,148 +1,151 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { AuthAlert } from '@/components/auth/AuthAlert';
 
-export default function LoginPage() {
+function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackError = searchParams.get('error');
+  const resetSuccess = searchParams.get('reset');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(
+    callbackError === 'auth_callback_failed'
+      ? 'Sign-in could not be completed. Please try again.'
+      : ''
+  );
+  const [success, setSuccess] = useState(
+    resetSuccess === 'success'
+      ? 'Your password has been updated. Sign in with your new password.'
+      : ''
+  );
 
-  const handleLogin = async () => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError('');
+    setSuccess('');
+
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const supabase = createClient();
-      console.log('Supabase client created');
-
-      const { data, error: err } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       });
 
-      console.log('Sign in response:', { data, error: err });
-
-      if (err) {
-        setError(err.message);
-      } else if (data.user) {
-        window.location.href = '/dashboard';
+      if (signInError) {
+        setError(signInError.message);
+        return;
       }
-    } catch (e) {
-      console.error(e);
-      setError('Unexpected error: ' + (e as Error).message);
-    }
 
-    setLoading(false);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleLogin();
+      if (data.user) {
+        router.push('/dashboard');
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="text-4xl">✨</div>
-            <span className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              lucina
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">Welcome back</h1>
-          <p className="text-slate-400 mt-2">Sign in to your account to continue</p>
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to your account to continue"
+      footer={
+        <p className="text-center text-slate-400 text-sm">
+          Don&apos;t have an account?{' '}
+          <Link href="/auth/register" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
+            Sign up
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <label htmlFor="email" className="block text-sm font-semibold text-slate-200 mb-2">
+            Email address
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="w-full px-4 py-3 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-700/80 text-white placeholder-slate-500 transition-all"
+            disabled={loading}
+          />
         </div>
 
-        {/* Form Container */}
-        <div className="bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
-          <div className="space-y-5">
-            {/* Email Input */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Email Address
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-700 text-white placeholder-slate-500 transition-all"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="••••••••"
-                className="w-full px-4 py-3 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-700 text-white placeholder-slate-500 transition-all"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="p-4 bg-red-900/30 border border-red-700 rounded-xl text-sm text-red-400 flex gap-3">
-                <span className="text-lg">⚠️</span>
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Sign In Button */}
-            <button
-              onClick={handleLogin}
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="password" className="block text-sm font-semibold text-slate-200">
+              Password
+            </label>
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-600"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-slate-800 text-slate-400">or</span>
-            </div>
-          </div>
-
-          {/* Sign Up Link */}
-          <p className="text-center text-slate-400 text-sm">
-            Don't have an account?{' '}
-            <Link href="/auth/register" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
-              Sign up
+              Forgot password?
             </Link>
-          </p>
+          </div>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            className="w-full px-4 py-3 border border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-slate-700/80 text-white placeholder-slate-500 transition-all"
+            disabled={loading}
+          />
         </div>
 
-        {/* Footer */}
-        <div className="mt-8 text-center text-xs text-slate-500">
-          <p>© 2026 Lucina. All rights reserved.</p>
-        </div>
+        {success && <AuthAlert variant="success" message={success} />}
+        {error && <AuthAlert variant="error" message={error} />}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-full hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              Signing in...
+            </span>
+          ) : (
+            'Sign in'
+          )}
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+        Loading...
       </div>
-    </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

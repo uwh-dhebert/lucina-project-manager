@@ -38,7 +38,7 @@ export function WikiTreeNav() {
 
   const loadTopics = async () => {
     try {
-      const response = await fetch('/api/wiki')
+      const response = await fetch('/api/wiki?tree=true')
       if (response.ok) {
         const data = await response.json()
         setTopics(data)

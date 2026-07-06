@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { PRIORITY_ZONES, type PriorityZone } from '@/lib/project-priorities'
 
 export async function PATCH(
   request: NextRequest,
@@ -21,12 +22,11 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { name, description } = body
+    const { name, description, responsible, priorityZone } = body
 
-    // Verify the user owns this project
     const { data: project, error: fetchError } = await supabase
       .from('projects')
-      .select('ownerId')
+      .select('ownerId, priorityZone')
       .eq('id', projectId)
       .single()
 
@@ -39,15 +39,44 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Update project with timestamp
     const now = new Date().toISOString()
+    const updates: Record<string, string | number> = { updatedAt: now }
+
+    if (typeof name === 'string' && name.trim()) {
+      updates.name = name.trim()
+    }
+    if (description !== undefined) {
+      updates.description = description
+    }
+    if (typeof responsible === 'string') {
+      updates.responsible = responsible.trim()
+    }
+    if (typeof priorityZone === 'string' && PRIORITY_ZONES.includes(priorityZone as PriorityZone)) {
+      updates.priorityZone = priorityZone
+
+      if (priorityZone !== project.priorityZone) {
+        const { data: existingInZone } = await supabase
+          .from('projects')
+          .select('priorityOrder')
+          .eq('ownerId', user.id)
+          .eq('priorityZone', priorityZone)
+          .order('priorityOrder', { ascending: false })
+          .limit(1)
+
+        updates.priorityOrder =
+          existingInZone?.[0]?.priorityOrder != null
+            ? existingInZone[0].priorityOrder + 1
+            : 0
+      }
+    }
+
+    if (Object.keys(updates).length === 1) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
     const { data: updated, error } = await supabase
       .from('projects')
-      .update({
-        name: name || undefined,
-        description: description ?? undefined,
-        updatedAt: now,
-      })
+      .update(updates)
       .eq('id', projectId)
       .select()
       .single()

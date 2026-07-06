@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/utils/supabase/client';
 
 interface QuickStats {
   projects: number;
@@ -11,47 +10,26 @@ interface QuickStats {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<QuickStats>({ projects: 0, documents: 0, links: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-
-      // Load stats
-      if (user) {
-        try {
-          const [projectsRes, docsRes, linksRes] = await Promise.all([
-            fetch('/api/projects'),
-            fetch('/api/documentation'),
-            fetch('/api/links'),
-          ]);
-
-          const projects = projectsRes.ok ? await projectsRes.json() : [];
-          const docs = docsRes.ok ? await docsRes.json() : [];
-          const links = linksRes.ok ? await linksRes.json() : [];
-
-          setStats({
-            projects: Array.isArray(projects) ? projects.length : 0,
-            documents: Array.isArray(docs) ? docs.length : 0,
-            links: Array.isArray(links) ? links.length : 0,
-          });
-        } catch (error) {
-          console.error('Failed to load stats:', error);
+    const loadStats = async () => {
+      try {
+        const response = await fetch('/api/dashboard/stats');
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
         }
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setStatsLoading(false);
       }
     };
 
-    getUser();
+    loadStats();
   }, []);
-
-  if (loading) {
-    return <div className="text-center py-12 text-slate-400">Loading...</div>;
-  }
 
   const features = [
     {
@@ -88,18 +66,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12">
-      {/* Header */}
       <div className="space-y-2">
         <h1 className="text-5xl font-bold text-white">Welcome back</h1>
         <p className="text-xl text-slate-400">Let's build something amazing today</p>
       </div>
 
-      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Projects', value: stats.projects, icon: '📋' },
-          { label: 'Documents', value: stats.documents, icon: '📄' },
-          { label: 'Links', value: stats.links, icon: '🔗' },
+          { label: 'Projects', value: statsLoading ? '—' : stats.projects, icon: '📋' },
+          { label: 'Documents', value: statsLoading ? '—' : stats.documents, icon: '📄' },
+          { label: 'Links', value: statsLoading ? '—' : stats.links, icon: '🔗' },
         ].map((stat, i) => (
           <div
             key={i}
@@ -116,7 +92,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Feature Cards */}
       <div>
         <h2 className="text-2xl font-bold text-white mb-6">Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -138,7 +113,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Call to Action */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-purple-600 p-12 text-white">
         <div className="relative z-10 max-w-lg">
           <h2 className="text-3xl font-bold mb-3">Get started in seconds</h2>
@@ -155,4 +129,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

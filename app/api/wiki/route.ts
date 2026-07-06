@@ -12,10 +12,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Fetch all topics with their subjects and content items
+    const treeOnly = request.nextUrl.searchParams.get('tree') === 'true';
+
+    // Sidebar/tree views only need metadata — skip heavy content bodies
+    const selectQuery = treeOnly
+      ? 'id, title, slug, order, subjects(id, title, slug, order, contentItems:content_items(id, title, order))'
+      : '*, subjects(*, contentItems:content_items(*))';
+
     const { data: topics, error } = await supabase
       .from('topics')
-      .select('*, subjects(*, contentItems:content_items(*))')
+      .select(selectQuery)
       .order('order', { ascending: true })
 
     if (error) {

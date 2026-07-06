@@ -1,5 +1,9 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { Trash2, Plus, Edit2, Check, X } from 'lucide-react';
+import { MarkdownEditor } from '@/components/MarkdownEditor';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 interface Note {
   id: string;
@@ -20,7 +24,6 @@ export function NotesTab({ projectId }: NotesTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load notes from database
   useEffect(() => {
     loadNotes();
   }, [projectId]);
@@ -121,15 +124,17 @@ export function NotesTab({ projectId }: NotesTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Add Note Input */}
       <div className="bg-slate-700 border border-slate-600 rounded-lg p-4">
         <div className="space-y-3">
-          <textarea
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-200">New Note</h3>
+            <span className="text-xs text-slate-500">Markdown supported</span>
+          </div>
+          <MarkdownEditor
             value={newNoteText}
-            onChange={(e) => setNewNoteText(e.target.value)}
-            placeholder="Add a new note..."
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            rows={3}
+            onChange={setNewNoteText}
+            placeholder="Write a note in markdown..."
+            minRows={5}
           />
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex justify-end">
@@ -144,7 +149,6 @@ export function NotesTab({ projectId }: NotesTabProps) {
         </div>
       </div>
 
-      {/* Notes List */}
       <div className="space-y-3">
         {isLoading ? (
           <div className="text-center py-8">
@@ -162,11 +166,11 @@ export function NotesTab({ projectId }: NotesTabProps) {
             >
               {editingId === note.id ? (
                 <div className="space-y-3">
-                  <textarea
+                  <MarkdownEditor
                     value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    rows={3}
+                    onChange={setEditText}
+                    placeholder="Edit note..."
+                    minRows={5}
                   />
                   <div className="flex gap-2 justify-end">
                     <button
@@ -189,9 +193,9 @@ export function NotesTab({ projectId }: NotesTabProps) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <p className="text-white whitespace-pre-wrap">{note.content}</p>
-                  <div className="flex justify-between items-center">
+                <div className="space-y-3">
+                  <MarkdownRenderer content={note.content} />
+                  <div className="flex justify-between items-center border-t border-slate-600 pt-3">
                     <p className="text-xs text-slate-400">
                       {new Date(note.updatedAt || note.createdAt).toLocaleDateString()} at{' '}
                       {new Date(note.updatedAt || note.createdAt).toLocaleTimeString([], {
@@ -225,4 +229,3 @@ export function NotesTab({ projectId }: NotesTabProps) {
     </div>
   );
 }
-

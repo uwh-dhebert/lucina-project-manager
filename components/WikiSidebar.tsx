@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight, Plus, BookOpen, Folder, FileText } from 'luc
 interface ContentItem {
   id: string
   title?: string
-  content: string
+  content?: string
   order: number
 }
 
@@ -31,7 +31,8 @@ interface TreeNodeProps {
   item: Topic | Subject | ContentItem
   type: 'topic' | 'subject' | 'content'
   topicSlug?: string
-  expanded: boolean
+  isExpanded: boolean
+  expandedNodes: Set<string>
   onToggle: (id: string) => void
   onAdd: (type: 'topic' | 'subject' | 'content', parentId?: string) => void
   level: number
@@ -43,7 +44,8 @@ function TreeNode({
   item,
   type,
   topicSlug,
-  expanded,
+  isExpanded,
+  expandedNodes,
   onToggle,
   onAdd,
   level,
@@ -68,7 +70,7 @@ function TreeNode({
       return item.title
     }
     if (type === 'content' && (item as ContentItem).content) {
-      return (item as ContentItem).content.substring(0, 20)
+      return (item as ContentItem).content!.substring(0, 20)
     }
     return 'Untitled'
   }
@@ -91,9 +93,9 @@ function TreeNode({
           <button
             onClick={() => onToggle(item.id)}
             className="p-0.5 hover:bg-slate-700 rounded transition-colors"
-            aria-label={expanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
-            {expanded ? (
+            {isExpanded ? (
               <ChevronDown className="w-3.5 h-3.5 text-violet-400" />
             ) : (
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
@@ -143,7 +145,7 @@ function TreeNode({
       </div>
 
       {/* Children */}
-      {expanded && hasChildren && (
+      {isExpanded && hasChildren && (
         <div className="space-y-0">
           {type === 'topic' &&
             (item as Topic).subjects?.map((subject) => (
@@ -152,7 +154,8 @@ function TreeNode({
                 item={subject}
                 type="subject"
                 topicSlug={(item as Topic).slug}
-                expanded={expanded}
+                isExpanded={expandedNodes.has(subject.id)}
+                expandedNodes={expandedNodes}
                 onToggle={onToggle}
                 onAdd={onAdd}
                 level={level + 1}
@@ -167,7 +170,8 @@ function TreeNode({
                 item={content}
                 type="content"
                 topicSlug={topicSlug}
-                expanded={expanded}
+                isExpanded={false}
+                expandedNodes={expandedNodes}
                 onToggle={onToggle}
                 onAdd={onAdd}
                 level={level + 1}
@@ -197,7 +201,7 @@ export function WikiSidebar({ onItemSelect, activeItemId }: WikiSidebarProps) {
 
   const loadTopics = async () => {
     try {
-      const response = await fetch('/api/wiki')
+      const response = await fetch('/api/wiki?tree=true')
       if (response.ok) {
         const data = await response.json()
         setTopics(data)
@@ -277,7 +281,8 @@ export function WikiSidebar({ onItemSelect, activeItemId }: WikiSidebarProps) {
               key={topic.id}
               item={topic}
               type="topic"
-              expanded={expandedNodes.has(topic.id)}
+              isExpanded={expandedNodes.has(topic.id)}
+              expandedNodes={expandedNodes}
               onToggle={toggleNode}
               onAdd={handleAdd}
               level={0}
