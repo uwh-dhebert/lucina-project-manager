@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Zap, Plus, Trash2 } from 'lucide-react';
+import { mapStoryRow, type StoryRecord } from '@/lib/project-stories';
 
-interface Story {
-  id: string;
-  title: string;
-  description: string;
-  acceptanceCriteria: string[];
-}
+type Story = StoryRecord;
 
 interface StoriesTabProps {
   projectId: string;
@@ -85,7 +81,9 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
       }
 
       const data = await response.json();
-      const newStories = data.stories || [];
+      const newStories = (data.stories || []).map((story: Record<string, unknown>) =>
+        mapStoryRow(story)
+      );
 
       const allStories = [...stories, ...newStories];
 
@@ -145,10 +143,10 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
         });
         if (response.ok) {
           const data = await response.json();
-          const savedStory = data.stories?.[0];
+          const savedStory = data.stories?.[0] ?? null;
           if (savedStory) {
             const updated = [...stories];
-            updated[index].id = savedStory.id;
+            updated[index] = { ...updated[index], ...savedStory };
             setStories(updated);
             return;
           }
@@ -261,10 +259,11 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
       <div className="space-y-4">
         {stories.map((story, index) => (
           <div
-            key={index}
+            key={story.id || `story-${index}`}
             className="bg-lucina-surface border border-lucina-rose rounded-lg overflow-hidden"
           >
             <button
+              type="button"
               onClick={() => setExpandedStory(expandedStory === index ? null : index)}
               className="w-full px-6 py-4 text-left hover:bg-lucina-rose-hover/50 transition-colors flex justify-between items-center"
             >
@@ -318,7 +317,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
                     Acceptance Criteria
                   </label>
                   <div className="space-y-2">
-                    {story.acceptanceCriteria.map((criterion, idx) => (
+                    {(story.acceptanceCriteria ?? []).map((criterion, idx) => (
                       <input
                         key={idx}
                         type="text"
@@ -334,9 +333,13 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
                       />
                     ))}
                      <button
+                       type="button"
                        onClick={() => {
                          const updated = [...stories];
-                         updated[index].acceptanceCriteria.push('');
+                         updated[index].acceptanceCriteria = [
+                           ...(updated[index].acceptanceCriteria ?? []),
+                           '',
+                         ];
                          setStories(updated);
                          handleUpdateStory(index);
                        }}
@@ -349,6 +352,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
 
                 <div className="flex justify-end">
                   <button
+                    type="button"
                     onClick={() => handleRemoveStory(index)}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
                   >

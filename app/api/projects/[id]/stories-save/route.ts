@@ -6,6 +6,7 @@ import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { canAccessProject } from '@/lib/project-access';
+import { mapStoryRow } from '@/lib/project-stories';
 
 export async function GET(
   request: NextRequest,
@@ -48,7 +49,9 @@ export async function GET(
 
     if (error) throw error;
 
-    return NextResponse.json({ stories: stories || [] });
+    return NextResponse.json({
+      stories: (stories ?? []).map((story) => mapStoryRow(story as Record<string, unknown>)),
+    });
   } catch (error: any) {
     console.error('Error fetching stories:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -114,7 +117,9 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      stories: insertedStories,
+      stories: (insertedStories ?? []).map((story) =>
+        mapStoryRow(story as Record<string, unknown>)
+      ),
     });
   } catch (error: any) {
     console.error('Error saving stories:', error);
@@ -164,7 +169,7 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      story: updatedStory,
+      story: mapStoryRow(updatedStory as Record<string, unknown>),
     });
   } catch (error: any) {
     console.error('Error updating story:', error);
