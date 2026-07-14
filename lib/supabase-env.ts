@@ -23,16 +23,49 @@ function requireEnv(label: string, ...names: string[]): string {
   return value;
 }
 
+function normalizeSupabaseUrl(url: string): string {
+  const trimmed = url.replace(/\/+$/, '');
+
+  if (trimmed.endsWith('/rest/v1')) {
+    return trimmed.slice(0, -'/rest/v1'.length);
+  }
+
+  return trimmed;
+}
+
 function validateHttpUrl(url: string, label: string): string {
+  if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {
+    throw new Error(
+      `${label} must be your Supabase HTTP project URL (https://xxxxx.supabase.co), not a Postgres connection string. In Supabase: Project Settings → API → Project URL. ${VERCEL_HINT}`
+    );
+  }
+
+  const normalized = normalizeSupabaseUrl(url);
+
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(normalized);
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
       throw new Error('invalid protocol');
     }
-    return url;
-  } catch {
+
+    if (!parsed.hostname.endsWith('.supabase.co')) {
+      throw new Error('unexpected host');
+    }
+
+    if (parsed.pathname && parsed.pathname !== '/') {
+      throw new Error(
+        `${label} should not include a path. Use https://xxxxx.supabase.co — not the Data API URL ending in /rest/v1. ${VERCEL_HINT}`
+      );
+    }
+
+    return normalized;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('should not include a path')) {
+      throw error;
+    }
+
     throw new Error(
-      `${label} is invalid ("${url}"). Use your full Supabase project URL, e.g. https://abcdefgh.supabase.co. ${VERCEL_HINT}`
+      `${label} is invalid ("${url}"). In Supabase go to Project Settings → API and copy Project URL (https://xxxxx.supabase.co only — not Data API /rest/v1). ${VERCEL_HINT}`
     );
   }
 }
