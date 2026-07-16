@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { createAdminClient } from '@/utils/supabase/admin';
 import { getSignupEmailError, normalizeSignupEmail } from '@/lib/auth-email';
-import { getResendConfigError } from '@/lib/resend-config';
 import { getSupabaseConfigError } from '@/lib/supabase-env';
-import { ResendService } from '@/infrastructure/external/ResendService';
+import { isBootstrapAdmin } from '@/lib/authz';
+
+// Registration is approval-gated instead of email-confirmed: the account is
+// created immediately with the email marked confirmed (no email is ever sent),
+// and a PENDING profile row gates access until an admin approves it on
+// /admin/users.
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,24 +34,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: supabaseConfigError }, { status: 503 });
     }
 
-    const resendConfigError = getResendConfigError();
-    if (resendConfigError) {
-      return NextResponse.json({ error: resendConfigError }, { status: 503 });
-    }
-
     const normalizedEmail = normalizeSignupEmail(email);
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!.trim();
-    const redirectTo = `${siteUrl}/auth/callback?next=/dashboard`;
-
     const supabase = createAdminClient();
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'signup',
+
+    const { data, error } = await supabase.auth.admin.createUser({
       email: normalizedEmail,
       password,
-      options: {
-        redirectTo,
-        data: { full_name: fullName.trim() },
-      },
+      email_confirm: true,
+      user_metadata: { full_name: fullName.trim() },
     });
 
     if (error) {
@@ -58,10 +53,7 @@ export async function POST(request: NextRequest) {
         message.includes('exists')
       ) {
         return NextResponse.json(
-          {
-            error:
-              'An account with this email already exists. Try signing in, use Forgot password, or ask an admin to fully remove the user from Supabase Auth before registering again.',
-          },
+          { error: 'An account with this email already exists. Try signing in or use Forgot password.' },
           { status: 409 }
         );
       }
@@ -69,41 +61,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    const properties = data?.properties;
-    const tokenHash = properties?.hashed_token;
-    const actionLink = properties?.action_link;
-
-    if (!tokenHash && !actionLink) {
+    if (!data.user) {
       return NextResponse.json(
-        { error: 'Account created, but no confirmation link was generated. Contact support.' },
+        { error: 'Account could not be created. Please try again.' },
         { status: 500 }
       );
     }
 
-    try {
-      const resend = new ResendService();
-      await resend.sendAuthEmail({
-        to: normalizedEmail,
-        actionType: 'signup',
-        tokenHash,
-        redirectTo,
-        actionUrl: tokenHash ? undefined : actionLink,
-      });
-    } catch (emailError) {
-      const message =
-        emailError instanceof Error ? emailError.message : 'Failed to send confirmation email';
-      console.error('Signup confirmation email error:', emailError);
-      return NextResponse.json(
-        {
-          error: `Account created, but the confirmation email could not be sent. ${message}`,
-        },
-        { status: 500 }
-      );
+    const bootstrap = isBootstrapAdmin(normalizedEmail);
+    const now = new Date().toISOString();
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: randomUUID(),
+      userId: data.user.id,
+      email: normalizedEmail,
+      fullName: fullName.trim(),
+      role: bootstrap ? 'ADMIN' : 'USER',
+      status: bootstrap ? 'APPROVED' : 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // A missing profile row is recovered by getOrCreateProfile on first sign-in,
+    // so log it but do not fail the registration.
+    if (profileError) {
+      console.error('Register profile insert error:', profileError.message);
     }
 
     return NextResponse.json({
-      message: 'Check your email for a confirmation link, then sign in.',
-      requiresConfirmation: true,
+      message: bootstrap
+        ? 'Account created. You can sign in now.'
+        : 'Account created. An administrator needs to approve your access — you can sign in once that happens.',
+      requiresApproval: !bootstrap,
     });
   } catch (error) {
     console.error('Register error:', error);

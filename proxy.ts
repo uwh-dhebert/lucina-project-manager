@@ -30,6 +30,8 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
 
+  // Signed-in users on login/register land on the app; the protected layout
+  // then routes PENDING/REJECTED accounts to /auth/pending.
   if (user && authPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }

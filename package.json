@@ -13,7 +13,8 @@
     "setup": "prisma db push",
     "setup:sharing": "node scripts/setup-sharing.mjs",
     "setup:todos": "node scripts/setup-todos.mjs",
-    "setup:summary": "node scripts/setup-summary.mjs"
+    "setup:summary": "node scripts/setup-summary.mjs",
+    "backfill:profiles": "node --env-file=.env.local scripts/backfill-profiles.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -21,12 +21,13 @@ const FloatingChatWidget = dynamic(
 interface ProtectedShellProps {
   children: React.ReactNode;
   userName: string;
+  isAdmin?: boolean;
 }
 
 const navLinkClass =
   'px-3 py-1.5 text-sm font-bold text-lucina-cream hover:text-lucina-rose rounded-lg transition-colors';
 
-export function ProtectedShell({ children, userName }: ProtectedShellProps) {
+export function ProtectedShell({ children, userName, isAdmin = false }: ProtectedShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -67,6 +68,11 @@ export function ProtectedShell({ children, userName }: ProtectedShellProps) {
                 <Link href="/wiki" className={navLinkClass}>
                   Wiki
                 </Link>
+                {isAdmin && (
+                  <Link href="/admin/users" className={navLinkClass}>
+                    Users
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -113,6 +119,15 @@ export function ProtectedShell({ children, userName }: ProtectedShellProps) {
               >
                 Wiki
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin/users"
+                  className="block w-full text-left px-4 py-2 text-sm font-bold text-lucina-cream hover:bg-lucina-dark rounded-lg transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Users
+                </Link>
+              )}
               <div className="text-sm text-lucina-cream/80 px-3 py-2 border-t border-lucina-dark mt-2 pt-3">{userName}</div>
               <button
                 onClick={() => {

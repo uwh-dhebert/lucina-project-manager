@@ -61,7 +61,7 @@ export default function RegisterPage() {
         return;
       }
 
-      setSuccess(data.message || 'Check your email for a confirmation link, then sign in.');
+      setSuccess(data.message || 'Account created. An administrator needs to approve your access.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
     } finally {
@@ -150,20 +150,29 @@ export default function RegisterPage() {
         {error && <AuthAlert variant="error" message={error} />}
         {success && <AuthAlert variant="success" message={success} />}
 
-        <button
-          type="submit"
-          disabled={loading || !!success}
-          className="w-full py-3 btn-lucina transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin rounded-full h-4 w-4 border-2 border-lucina-cream border-t-transparent" />
-              Creating account...
-            </span>
-          ) : (
-            'Create account'
-          )}
-        </button>
+        {success ? (
+          <Link
+            href="/auth/login"
+            className="block w-full py-3 text-center btn-lucina transition-all"
+          >
+            Go to sign in
+          </Link>
+        ) : (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 btn-lucina transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-2 border-lucina-cream border-t-transparent" />
+                Creating account...
+              </span>
+            ) : (
+              'Create account'
+            )}
+          </button>
+        )}
       </form>
     </AuthShell>
   );
