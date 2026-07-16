@@ -5,22 +5,16 @@ function cleanEnvValue(value: string): string {
   return value.trim().replace(/^['"]|['"]$/g, '');
 }
 
-function readEnv(...names: string[]): string | undefined {
-  for (const name of names) {
-    const raw = process.env[name];
+// IMPORTANT: values must be passed as static process.env.X references at the
+// call site. Next.js only inlines NEXT_PUBLIC_* vars into the client bundle
+// for static member access — process.env[name] is undefined in the browser.
+function requireEnv(label: string, ...values: Array<string | undefined>): string {
+  for (const raw of values) {
     if (!raw) continue;
     const value = cleanEnvValue(raw);
     if (value) return value;
   }
-  return undefined;
-}
-
-function requireEnv(label: string, ...names: string[]): string {
-  const value = readEnv(...names);
-  if (!value) {
-    throw new Error(`${label} is not configured. ${VERCEL_HINT}`);
-  }
-  return value;
+  throw new Error(`${label} is not configured. ${VERCEL_HINT}`);
 }
 
 function normalizeSupabaseUrl(url: string): string {
@@ -73,8 +67,8 @@ function validateHttpUrl(url: string, label: string): string {
 export function getSupabaseUrl(): string {
   const url = requireEnv(
     'Supabase URL',
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'SUPABASE_URL'
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_URL
   );
   return validateHttpUrl(url, 'Supabase URL');
 }
@@ -82,14 +76,17 @@ export function getSupabaseUrl(): string {
 export function getSupabasePublishableKey(): string {
   return requireEnv(
     'Supabase publishable key',
-    'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'SUPABASE_ANON_KEY'
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.SUPABASE_ANON_KEY
   );
 }
 
 export function getSupabaseServiceRoleKey(): string {
-  return requireEnv('Supabase service role key', 'SUPABASE_SERVICE_ROLE_KEY');
+  return requireEnv(
+    'Supabase service role key',
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
 }
 
 export function getSupabaseConfigError(): string | null {
