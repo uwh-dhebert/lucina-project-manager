@@ -188,6 +188,7 @@ model Link {
   groupId   String   @db.Uuid
   title     String
   url       String
+  order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

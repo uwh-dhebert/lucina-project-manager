@@ -146,6 +146,7 @@ CREATE TABLE links (
   "groupId" UUID NOT NULL,
   title VARCHAR(255) NOT NULL,
   url TEXT NOT NULL,
+  "order" INT DEFAULT 0,
   "createdAt" TIMESTAMP DEFAULT now(),
   "updatedAt" TIMESTAMP DEFAULT now(),
   FOREIGN KEY ("groupId") REFERENCES link_groups(id) ON DELETE CASCADE

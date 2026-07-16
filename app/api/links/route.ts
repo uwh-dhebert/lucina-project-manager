@@ -1,10 +1,50 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import {
+  ensureLinksOrderColumn,
+  isLinksOrderColumnMissingError,
+} from '@/lib/setup-links-order';
+import { getErrorMessage } from '@/lib/errors';
+
+async function insertLink(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  groupId: string,
+  title: string,
+  url: string
+) {
+  const { data: existing } = await supabase
+    .from('links')
+    .select('order')
+    .eq('groupId', groupId)
+    .order('order', { ascending: false })
+    .limit(1);
+
+  const nextOrder =
+    existing && existing.length > 0 && typeof existing[0].order === 'number'
+      ? existing[0].order + 1
+      : 0;
+
+  const { data: link, error } = await supabase
+    .from('links')
+    .insert({
+      groupId,
+      title,
+      url,
+      order: nextOrder,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return link;
+}
 
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -17,7 +57,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Verify the group belongs to the user
     const { data: group } = await supabase
       .from('link_groups')
       .select('userId')
@@ -28,24 +67,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { data: link, error } = await supabase
-      .from('links')
-      .insert({
-        groupId,
-        title,
-        url,
-      })
-      .select();
-
-    if (error) {
-      console.error('Error creating link:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    try {
+      const link = await insertLink(supabase, groupId, title.trim(), url.trim());
+      return NextResponse.json(link ?? {});
+    } catch (error: unknown) {
+      if (!isLinksOrderColumnMissingError(getErrorMessage(error))) {
+        throw error;
+      }
+      await ensureLinksOrderColumn();
+      const link = await insertLink(supabase, groupId, title.trim(), url.trim());
+      return NextResponse.json(link ?? {});
     }
-
-    return NextResponse.json(link?.[0] || {});
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating link:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 });
   }
 }
-
