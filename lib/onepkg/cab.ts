@@ -1,8 +1,9 @@
 import { inflateRaw } from 'pako';
+import { decompressLzx } from './lzx';
 
 // Minimal Microsoft Cabinet (.cab) reader — .onepkg files are CAB archives.
-// Supports the compression OneNote actually uses (none and MSZIP) and runs in
-// the browser, so notebooks never have to be uploaded raw.
+// Supports none, MSZIP, and LZX compression (OneNote desktop exports use LZX)
+// and runs in the browser, so notebooks never have to be uploaded raw.
 //
 // Format reference: [MS-CAB]. All integers are little-endian.
 
@@ -14,6 +15,7 @@ export interface CabFile {
 
 const COMPRESS_NONE = 0;
 const COMPRESS_MSZIP = 1;
+const COMPRESS_LZX = 3;
 
 const FLAG_PREV_CABINET = 0x0001;
 const FLAG_NEXT_CABINET = 0x0002;
@@ -41,6 +43,8 @@ interface Folder {
   dataOffset: number;
   dataBlockCount: number;
   compression: number;
+  /** LZX window size in bits (folder typeCompress bits 8-12). */
+  windowBits: number;
 }
 
 export function extractCab(buffer: Uint8Array): CabFile[] {
@@ -78,9 +82,14 @@ export function extractCab(buffer: Uint8Array): CabFile[] {
   for (let i = 0; i < cFolders; i++) {
     const dataOffset = r.u32();
     const dataBlockCount = r.u16();
-    const compression = r.u16() & 0x000f;
+    const typeCompress = r.u16();
     r.bytes(cbCFFolder);
-    folders.push({ dataOffset, dataBlockCount, compression });
+    folders.push({
+      dataOffset,
+      dataBlockCount,
+      compression: typeCompress & 0x000f,
+      windowBits: (typeCompress >> 8) & 0x1f,
+    });
   }
 
   interface FileEntry { path: string; uncompressedOffset: number; size: number; folderIndex: number; }
@@ -116,6 +125,30 @@ export function extractCab(buffer: Uint8Array): CabFile[] {
 
 function decompressFolder(buffer: Uint8Array, folder: Folder, cbCFData: number): Uint8Array {
   const r = new Reader(buffer, folder.dataOffset);
+
+  if (folder.compression === COMPRESS_LZX) {
+    // LZX decodes the folder's CFDATA payloads as one continuous stream.
+    const compressedChunks: Uint8Array[] = [];
+    let compressedTotal = 0;
+    let uncompressedTotal = 0;
+    for (let i = 0; i < folder.dataBlockCount; i++) {
+      r.u32(); // csum (not verified)
+      const cbData = r.u16();
+      const cbUncomp = r.u16();
+      r.bytes(cbCFData);
+      compressedChunks.push(r.bytes(cbData));
+      compressedTotal += cbData;
+      uncompressedTotal += cbUncomp;
+    }
+    const compressed = new Uint8Array(compressedTotal);
+    let coff = 0;
+    for (const chunk of compressedChunks) {
+      compressed.set(chunk, coff);
+      coff += chunk.length;
+    }
+    return decompressLzx(compressed, uncompressedTotal, folder.windowBits);
+  }
+
   const chunks: Uint8Array[] = [];
   let total = 0;
 
@@ -142,7 +175,7 @@ function decompressFolder(buffer: Uint8Array, folder: Folder, cbCFData: number):
       }
     } else {
       throw new Error(
-        'This .onepkg uses LZX/Quantum cabinet compression, which is not supported. Re-export the notebook from the OneNote desktop app.'
+        'This .onepkg uses Quantum cabinet compression, which is not supported.'
       );
     }
 
