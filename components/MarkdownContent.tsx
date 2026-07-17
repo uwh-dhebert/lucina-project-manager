@@ -14,7 +14,7 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
   }
 
   return (
-    <div className={`markdown-content text-lucina-secondary text-sm leading-relaxed ${className}`}>
+    <div className={`markdown-content text-lucina-primary text-sm leading-relaxed ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -48,36 +48,46 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
               {children}
             </blockquote>
           ),
+          // Inline code: light chip + dark text (never dark-on-dark).
+          // Block code lives inside <pre>; reset chip styles there.
           code: ({ className: codeClassName, children }) => {
-            const isBlock = codeClassName?.includes('language-');
-            if (isBlock) {
+            const isFenced = Boolean(codeClassName?.includes('language-'));
+            if (isFenced) {
               return (
-                <code className="block overflow-x-auto rounded-lg bg-lucina-accent border border-lucina-rose p-3 text-xs font-mono text-lucina-primary">
+                <code
+                  className={`${codeClassName ?? ''} block whitespace-pre font-mono text-xs text-lucina-primary bg-transparent p-0`}
+                >
                   {children}
                 </code>
               );
             }
             return (
-              <code className="rounded bg-lucina-primary px-1.5 py-0.5 text-xs font-mono text-lucina-secondary">
+              <code className="rounded-md bg-lucina-cream/90 px-1.5 py-0.5 text-xs font-mono text-lucina-primary border border-lucina-rose/60">
                 {children}
               </code>
             );
           },
-          pre: ({ children }) => <pre className="my-3 overflow-x-auto">{children}</pre>,
+          pre: ({ children }) => (
+            <pre className="my-3 overflow-x-auto rounded-lg border border-lucina-rose bg-lucina-white p-3 text-xs font-mono text-lucina-primary [&_code]:bg-transparent [&_code]:border-0 [&_code]:p-0 [&_code]:text-lucina-primary [&_code]:text-xs">
+              {children}
+            </pre>
+          ),
           table: ({ children }) => (
-            <div className="my-3 overflow-x-auto">
-              <table className="min-w-full border-collapse border border-lucina-rose text-xs">
+            <div className="my-3 overflow-x-auto rounded-lg border border-lucina-rose bg-lucina-white">
+              <table className="min-w-full border-collapse text-xs text-lucina-primary">
                 {children}
               </table>
             </div>
           ),
           th: ({ children }) => (
-            <th className="border border-lucina-rose bg-lucina-white px-3 py-2 text-left font-semibold text-lucina-primary">
+            <th className="border-b border-lucina-rose bg-lucina-surface px-3 py-2 text-left font-semibold text-lucina-primary">
               {children}
             </th>
           ),
           td: ({ children }) => (
-            <td className="border border-lucina-rose px-3 py-2">{children}</td>
+            <td className="border-b border-lucina-rose/60 px-3 py-2 text-lucina-primary align-top">
+              {children}
+            </td>
           ),
           hr: () => <hr className="my-4 border-lucina-rose" />,
         }}

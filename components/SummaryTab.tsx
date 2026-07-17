@@ -155,8 +155,11 @@ export function SummaryTab({ projectId }: SummaryTabProps) {
       )}
 
       {!generating && summary?.content && (
-        <div className="bg-lucina-surface border border-lucina-rose rounded-lg p-4">
-          <MarkdownRenderer content={summary.content} />
+        <div className="bg-lucina-white border border-lucina-rose rounded-lg p-5 shadow-sm">
+          <MarkdownRenderer
+            content={summary.content}
+            className="text-lucina-primary"
+          />
         </div>
       )}
 
