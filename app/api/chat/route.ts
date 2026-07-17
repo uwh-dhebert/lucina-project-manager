@@ -4,6 +4,7 @@
  */
 
 import { createClient } from '@/utils/supabase/server';
+import { createAdminClient } from '@/utils/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { ChatUseCase } from '@/application/chat/ChatUseCase';
@@ -38,6 +39,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Message cannot be empty' },
         { status: 400 }
+      );
+    }
+
+    // Guard against writing into another user's conversation. Conversations are
+    // identified only by a client-generated id (never persisted as a row), so
+    // ownership = whoever first posted under that id. The check runs on the admin
+    // client because RLS would otherwise hide other users' messages from us.
+    const admin = createAdminClient();
+    const { data: foreignRows, error: ownershipError } = await admin
+      .from('chat_messages')
+      .select('id')
+      .eq('conversationId', conversationId)
+      .neq('userId', user.id)
+      .limit(1);
+
+    if (ownershipError) {
+      console.error('Error verifying conversation ownership:', ownershipError);
+      return NextResponse.json(
+        { error: 'Could not verify conversation' },
+        { status: 500 }
+      );
+    }
+
+    if (foreignRows && foreignRows.length > 0) {
+      return NextResponse.json(
+        { error: 'Conversation does not belong to you' },
+        { status: 403 }
       );
     }
 
