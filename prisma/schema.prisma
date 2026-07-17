@@ -90,6 +90,8 @@ model ProjectStory {
   title               String
   description         String   @db.Text
   acceptanceCriteria  String[] @map("acceptance_criteria")
+  /// "generated" = AI from design doc; "manual" = user-added. Regenerate only removes generated.
+  source              String   @default("generated")
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

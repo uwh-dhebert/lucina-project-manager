@@ -65,6 +65,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
     setError(null);
 
     try {
+      // Server replaces AI-generated stories and keeps manual ones.
       const response = await fetch(`/api/projects/${projectId}/stories`, {
         method: 'POST',
         headers: {
@@ -81,37 +82,25 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
       }
 
       const data = await response.json();
-      const newStories = (data.stories || []).map((story: Record<string, unknown>) =>
+      const nextStories = (data.stories || []).map((story: Record<string, unknown>) =>
         mapStoryRow(story)
       );
 
-      const allStories = [...stories, ...newStories];
+      // Keep any unsaved manual drafts the user just added in the UI.
+      const unsavedManual = stories.filter(
+        (s) => !s.id && s.source === 'manual'
+      );
+      const merged = [...nextStories, ...unsavedManual];
 
-      // Save new stories to database
-      await saveStoriesToDatabase(allStories);
-
-      // Sync story subtasks into the todo list
       await fetch(`/api/projects/${projectId}/todos/sync-stories`, { method: 'POST' });
 
-      setStories(allStories);
-      onStoriesGenerated?.(allStories);
+      setStories(merged);
+      onStoriesGenerated?.(merged);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       console.error('Story generation error:', err);
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const saveStoriesToDatabase = async (storiesToSave: Story[]) => {
-    try {
-      await fetch(`/api/projects/${projectId}/stories-save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stories: storiesToSave }),
-      });
-    } catch (err) {
-      console.error('Error saving stories to database:', err);
     }
   };
 
@@ -139,7 +128,9 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
         const response = await fetch(`/api/projects/${projectId}/stories-save`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stories: [updatedStory] }),
+          body: JSON.stringify({
+            stories: [{ ...updatedStory, source: updatedStory.source || 'manual' }],
+          }),
         });
         if (response.ok) {
           const data = await response.json();
@@ -182,6 +173,7 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
       title: 'New Story',
       description: '',
       acceptanceCriteria: [''],
+      source: 'manual',
     };
     setStories([...stories, newStory]);
   };
@@ -249,6 +241,9 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
           </button>
         </div>
       </div>
+      <p className="text-sm text-lucina-muted -mt-2">
+        Regenerate replaces AI-generated stories only. Stories you add manually are kept.
+      </p>
 
       {error && (
         <div className="bg-red-50 border border-red-800 rounded-lg p-4">
@@ -267,11 +262,22 @@ export function StoriesTab({ projectId, designDocContent, onStoriesGenerated }: 
               onClick={() => setExpandedStory(expandedStory === index ? null : index)}
               className="w-full px-6 py-4 text-left hover:bg-lucina-rose-hover/50 transition-colors flex justify-between items-center"
             >
-              <div>
-                <h4 className="font-semibold text-lucina-primary">{story.title}</h4>
+              <div className="min-w-0 flex-1 pr-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="font-semibold text-lucina-primary">{story.title}</h4>
+                  <span
+                    className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${
+                      story.source === 'manual'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                        : 'bg-lucina-cream/80 text-lucina-primary border-lucina-rose'
+                    }`}
+                  >
+                    {story.source === 'manual' ? 'Manual' : 'Generated'}
+                  </span>
+                </div>
                 <p className="text-sm text-lucina-secondary mt-1 line-clamp-2">{story.description}</p>
               </div>
-              <div className="text-2xl">
+              <div className="text-2xl shrink-0">
                 {expandedStory === index ? '▼' : '▶'}
               </div>
             </button>

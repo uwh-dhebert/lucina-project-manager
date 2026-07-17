@@ -1,14 +1,72 @@
 /**
  * Generate Stories from Design Document API
- * Uses Grok's reasoning model to create stories from design doc
+ * Replaces existing AI-generated stories while keeping manual ones.
  */
 
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { canAccessProject } from '@/lib/project-access';
+import { mapStoryRow } from '@/lib/project-stories';
+import { getErrorMessage } from '@/lib/errors';
+import {
+  ensureStorySourceColumn,
+  isStorySourceColumnMissingError,
+} from '@/lib/setup-stories-source';
 
 interface GenerateStoriesRequest {
   designDoc: string;
+}
+
+async function replaceGeneratedStories(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  projectId: string,
+  stories: Array<{
+    title: string;
+    description: string;
+    acceptanceCriteria: string[];
+  }>
+) {
+  // Remove previous AI stories only — manual stories stay.
+  const { error: deleteError } = await supabase
+    .from('project_stories')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('source', 'generated');
+
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (stories.length === 0) {
+    const { data: remaining, error } = await supabase
+      .from('project_stories')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+    if (error) throw new Error(error.message);
+    return (remaining ?? []).map((row) => mapStoryRow(row as Record<string, unknown>));
+  }
+
+  const rows = stories.map((story) => ({
+    id: randomUUID(),
+    project_id: projectId,
+    title: story.title,
+    description: story.description,
+    acceptance_criteria: story.acceptanceCriteria || [],
+    source: 'generated',
+  }));
+
+  const { error: insertError } = await supabase.from('project_stories').insert(rows);
+  if (insertError) throw new Error(insertError.message);
+
+  const { data: allStories, error: listError } = await supabase
+    .from('project_stories')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+
+  if (listError) throw new Error(listError.message);
+
+  return (allStories ?? []).map((row) => mapStoryRow(row as Record<string, unknown>));
 }
 
 export async function POST(
@@ -16,9 +74,17 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient();
+    if (!process.env.XAI_API_KEY) {
+      return NextResponse.json(
+        {
+          error: 'API configuration error',
+          message: 'xAI API key is not configured',
+        },
+        { status: 503 }
+      );
+    }
 
-    // Verify user is authenticated
+    const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -38,32 +104,23 @@ export async function POST(
       );
     }
 
-    // Verify project exists and user owns it
     const allowed = await canAccessProject(supabase, user.id, projectId);
     if (!allowed) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     const { data: project, error: projectError } = await supabase
       .from('projects')
-      .select('*')
+      .select('id, name')
       .eq('id', projectId)
       .single();
 
     if (projectError || !project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // Prepare the prompt for story generation
     const prompt = buildStoriesPrompt(designDoc, project.name);
 
-    // Call Grok with reasoning model for story generation
     const response = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -75,7 +132,8 @@ export async function POST(
         messages: [
           {
             role: 'system',
-            content: `You are an expert software engineer and product manager. Generate well-formed user stories with clear acceptance criteria based on the design document provided. Return the stories as a JSON array with the specified format.`,
+            content:
+              'You are an expert software engineer and product manager. Generate well-formed user stories with clear acceptance criteria based on the design document provided. Return the stories as a JSON array with the specified format.',
           },
           {
             role: 'user',
@@ -88,29 +146,55 @@ export async function POST(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `Grok API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`
-      );
+      const errorData = await response.json().catch(() => ({}));
+      const apiMessage =
+        (errorData as { error?: { message?: string } })?.error?.message || 'Unknown error';
+      throw new Error(`Grok API error: ${response.status} - ${apiMessage}`);
     }
 
     const data = await response.json();
     const storiesText = data.choices?.[0]?.message?.content || '';
 
-    // Parse the JSON response
-    let stories;
+    let generated: Array<{
+      title: string;
+      description: string;
+      acceptanceCriteria: string[];
+    }> = [];
     try {
       const jsonMatch = storiesText.match(/\[[\s\S]*\]/);
-      stories = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+      if (Array.isArray(parsed)) {
+        generated = parsed.map((item: Record<string, unknown>) => ({
+          title: String(item.title ?? 'Untitled story'),
+          description: String(item.description ?? ''),
+          acceptanceCriteria: Array.isArray(item.acceptanceCriteria)
+            ? item.acceptanceCriteria.map(String)
+            : [],
+        }));
+      }
     } catch (e) {
       console.error('Error parsing stories JSON:', e);
-      stories = [];
+      generated = [];
+    }
+
+    const persist = async () => replaceGeneratedStories(supabase, projectId, generated);
+
+    let stories;
+    try {
+      stories = await persist();
+    } catch (error: unknown) {
+      if (!isStorySourceColumnMissingError(getErrorMessage(error))) {
+        throw error;
+      }
+      await ensureStorySourceColumn();
+      stories = await persist();
     }
 
     return NextResponse.json(
       {
         success: true,
         stories,
+        generatedCount: generated.length,
         project: {
           id: project.id,
           name: project.name,
@@ -118,10 +202,11 @@ export async function POST(
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Story generation error:', error);
+    const message = getErrorMessage(error);
 
-    if (error.message.includes('XAI_API_KEY')) {
+    if (message.includes('XAI_API_KEY')) {
       return NextResponse.json(
         {
           error: 'API configuration error',
@@ -131,7 +216,7 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -160,4 +245,3 @@ Requirements for stories:
 - Include both user-facing and technical stories
 - Prioritize stories based on the phased approach mentioned in the design doc`;
 }
-

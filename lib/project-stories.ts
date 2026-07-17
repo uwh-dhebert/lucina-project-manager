@@ -1,10 +1,17 @@
+export type StorySource = 'generated' | 'manual';
+
 export interface StoryRecord {
   id: string;
   title: string;
   description: string;
   acceptanceCriteria: string[];
+  source: StorySource;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export function normalizeStorySource(value: unknown): StorySource {
+  return value === 'manual' ? 'manual' : 'generated';
 }
 
 export function mapStoryRow(row: Record<string, unknown>): StoryRecord {
@@ -15,8 +22,8 @@ export function mapStoryRow(row: Record<string, unknown>): StoryRecord {
     title: String(row.title ?? ''),
     description: String(row.description ?? ''),
     acceptanceCriteria: Array.isArray(rawCriteria) ? rawCriteria.map(String) : [],
-    createdAt: row.created_at ? String(row.created_at) : undefined,
-    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+    source: normalizeStorySource(row.source),
+    createdAt: row.created_at ? String(row.created_at) : row.createdAt ? String(row.createdAt) : undefined,
+    updatedAt: row.updated_at ? String(row.updated_at) : row.updatedAt ? String(row.updatedAt) : undefined,
   };
 }
-

@@ -99,21 +99,47 @@ export async function POST(
       );
     }
 
-    // Insert stories
-    const storiesData = stories.map((story: any) => ({
+    // Manual saves default to source=manual so regenerate will not wipe them.
+    const storiesData = stories.map((story: {
+      title?: string;
+      description?: string;
+      acceptanceCriteria?: string[];
+      source?: string;
+    }) => ({
       id: randomUUID(),
       project_id: projectId,
       title: story.title,
       description: story.description,
       acceptance_criteria: story.acceptanceCriteria || [],
+      source: story.source === 'generated' ? 'generated' : 'manual',
     }));
 
-    const { data: insertedStories, error } = await supabase
-      .from('project_stories')
-      .insert(storiesData)
-      .select();
+    const insert = async () => {
+      const { data: insertedStories, error } = await supabase
+        .from('project_stories')
+        .insert(storiesData)
+        .select();
+      if (error) throw error;
+      return insertedStories;
+    };
 
-    if (error) throw error;
+    let insertedStories;
+    try {
+      insertedStories = await insert();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (
+        message.toLowerCase().includes('source') &&
+        (message.toLowerCase().includes('column') ||
+          message.toLowerCase().includes('schema cache'))
+      ) {
+        const { ensureStorySourceColumn } = await import('@/lib/setup-stories-source');
+        await ensureStorySourceColumn();
+        insertedStories = await insert();
+      } else {
+        throw error;
+      }
+    }
 
     return NextResponse.json({
       success: true,
