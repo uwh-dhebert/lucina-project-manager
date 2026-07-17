@@ -1,14 +1,26 @@
 import { createAdminClient } from '@/utils/supabase/admin';
 
+// The app-wide user directory used by the assignee / share pickers. It must NOT
+// carry raw email addresses: any authenticated user can list it, so exposing
+// every colleague's email here let the whole directory be harvested. A
+// server-computed `displayName` (full name, falling back to email only when a
+// user has no name) is all the pickers need.
 export interface AppUser {
   id: string;
-  email: string;
   fullName: string | null;
+  displayName: string;
 }
 
-export function getUserDisplayName(user: Pick<AppUser, 'fullName' | 'email'>): string {
+export function getUserDisplayName(user: {
+  fullName?: string | null;
+  email?: string | null;
+  displayName?: string | null;
+}): string {
+  const display = user.displayName?.trim();
+  if (display) return display;
   const name = user.fullName?.trim();
-  return name || user.email;
+  if (name) return name;
+  return user.email?.trim() || '';
 }
 
 export function getAuthUserDisplayName(
@@ -54,13 +66,16 @@ export async function listAppUsers(options?: {
     for (const authUser of data.users) {
       if (!authUser.email) continue;
       if (options?.excludeUserId && authUser.id === options.excludeUserId) continue;
+      const fullName =
+        (authUser.user_metadata?.full_name as string | undefined) ??
+        (authUser.user_metadata?.name as string | undefined) ??
+        null;
       users.push({
         id: authUser.id,
-        email: authUser.email,
-        fullName:
-          (authUser.user_metadata?.full_name as string | undefined) ??
-          (authUser.user_metadata?.name as string | undefined) ??
-          null,
+        fullName,
+        // Compute the label server-side so the raw email never leaves the server
+        // unless the user has no name at all (kept only as a last-resort label).
+        displayName: getUserDisplayName({ fullName, email: authUser.email }),
       });
     }
 
