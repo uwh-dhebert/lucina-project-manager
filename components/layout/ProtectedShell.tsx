@@ -58,6 +58,9 @@ export function ProtectedShell({ children, userName, isAdmin = false }: Protecte
                 <Link href="/projects" className={navLinkClass}>
                   Projects
                 </Link>
+                <Link href="/tasks" className={navLinkClass}>
+                  Tasks
+                </Link>
                 <button
                   type="button"
                   onClick={openLinksModal}
@@ -104,6 +107,13 @@ export function ProtectedShell({ children, userName, isAdmin = false }: Protecte
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Projects
+              </Link>
+              <Link
+                href="/tasks"
+                className="block w-full text-left px-4 py-2 text-sm font-bold text-lucina-cream hover:bg-lucina-dark rounded-lg transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Tasks
               </Link>
               <button
                 type="button"
