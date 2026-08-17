@@ -1,4 +1,10 @@
-export type PriorityZone = 'in_design' | 'prioritized' | 'active' | 'qa' | 'completed';
+export type PriorityZone =
+  | 'in_design'
+  | 'prioritized'
+  | 'active'
+  | 'qa'
+  | 'ready_for_release'
+  | 'completed';
 
 export interface ProjectPriorityItem {
   id: string;
@@ -15,13 +21,21 @@ export interface ProjectPriorityItem {
   updatedAt: string;
 }
 
-export const PRIORITY_ZONES: PriorityZone[] = ['in_design', 'prioritized', 'active', 'qa', 'completed'];
+export const PRIORITY_ZONES: PriorityZone[] = [
+  'in_design',
+  'prioritized',
+  'active',
+  'qa',
+  'ready_for_release',
+  'completed',
+];
 
 export const ZONE_LABELS: Record<PriorityZone, string> = {
   in_design: 'Design',
   prioritized: 'Prioritize',
   active: 'Active',
   qa: 'QA',
+  ready_for_release: 'Ready for Release',
   completed: 'Complete',
 };
 
@@ -30,6 +44,7 @@ export const ZONE_COLORS: Record<PriorityZone, string> = {
   prioritized: 'border-amber-500/50 bg-amber-50',
   active: 'border-emerald-500/50 bg-emerald-50',
   qa: 'border-sky-500/50 bg-sky-50',
+  ready_for_release: 'border-violet-500/50 bg-violet-50',
   completed: 'border-lucina-muted/50 bg-lucina-accent',
 };
 
@@ -38,6 +53,7 @@ export const ZONE_BADGE_COLORS: Record<PriorityZone, string> = {
   prioritized: 'bg-amber-50 text-amber-700 border-amber-300/50',
   active: 'bg-emerald-50 text-emerald-700 border-emerald-300/50',
   qa: 'bg-sky-50 text-sky-700 border-sky-300/50',
+  ready_for_release: 'bg-violet-50 text-violet-700 border-violet-300/50',
   completed: 'bg-lucina-accent text-lucina-muted border-lucina-muted/50',
 };
 
@@ -87,6 +103,7 @@ export function groupByZone(items: ProjectPriorityItem[]): Record<PriorityZone, 
     prioritized: [],
     active: [],
     qa: [],
+    ready_for_release: [],
     completed: [],
   };
 

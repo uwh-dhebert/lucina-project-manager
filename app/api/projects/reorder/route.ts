@@ -1,9 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import { sortProjectsForPriorities, type PriorityZone } from '@/lib/project-priorities';
+import { PRIORITY_ZONES, sortProjectsForPriorities, type PriorityZone } from '@/lib/project-priorities';
 import { canAccessProject, getAccessibleProjects } from '@/lib/project-access';
-
-const VALID_ZONES: PriorityZone[] = ['in_design', 'prioritized', 'active', 'qa', 'completed'];
 
 interface ReorderItem {
   id: string;
@@ -28,7 +26,7 @@ export async function PUT(request: NextRequest) {
     }
 
     for (const item of items) {
-      if (!item.id || !VALID_ZONES.includes(item.zone) || typeof item.sortOrder !== 'number') {
+      if (!item.id || !PRIORITY_ZONES.includes(item.zone) || typeof item.sortOrder !== 'number') {
         return NextResponse.json({ error: 'Invalid item in reorder payload' }, { status: 400 });
       }
     }

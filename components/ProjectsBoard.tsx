@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -13,6 +13,7 @@ import {
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
+  type PointerSensorOptions,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -40,6 +41,30 @@ import {
   type ProjectRow,
 } from '@/lib/project-priorities';
 
+// Cards are draggable from anywhere on their surface, so the sensor has to let
+// the controls living inside a card (link, status select, buttons) keep their
+// own pointer behaviour. The grip handle opts back in for touch users.
+const INTERACTIVE_SELECTOR = 'a, button, select, input, textarea, label, [role="combobox"]';
+
+class CardPointerSensor extends PointerSensor {
+  static activators = [
+    {
+      eventName: 'onPointerDown' as const,
+      handler: ({ nativeEvent: event }: ReactPointerEvent, { onActivation }: PointerSensorOptions) => {
+        if (!event.isPrimary || event.button !== 0) return false;
+
+        const target = event.target as HTMLElement | null;
+        if (target && !target.closest('[data-drag-handle]') && target.closest(INTERACTIVE_SELECTOR)) {
+          return false;
+        }
+
+        onActivation?.({ event });
+        return true;
+      },
+    },
+  ];
+}
+
 function resolveResponsibleUserId(responsible: string, users: AppUser[]): string {
   if (!responsible) return '';
   if (users.some((u) => u.id === responsible)) return responsible;
@@ -63,6 +88,7 @@ function ProjectCard({ item, users, onResponsibleChange, onStatusChange, onShare
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging: isSortableDragging,
@@ -78,7 +104,8 @@ function ProjectCard({ item, users, onResponsibleChange, onStatusChange, onShare
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex flex-col rounded-xl border border-lucina-rose bg-lucina-white p-3 shadow-sm transition-shadow hover:border-lucina-secondary hover:shadow-md ${
+      {...listeners}
+      className={`group flex cursor-grab select-none flex-col rounded-xl border border-lucina-rose bg-lucina-white p-3 shadow-sm transition-shadow hover:border-lucina-secondary hover:shadow-md active:cursor-grabbing ${
         isDragging ? 'shadow-xl ring-2 ring-lucina-secondary/50' : ''
       }`}
     >
@@ -98,10 +125,11 @@ function ProjectCard({ item, users, onResponsibleChange, onStatusChange, onShare
         </div>
         <button
           type="button"
+          ref={setActivatorNodeRef}
+          data-drag-handle
           className="shrink-0 cursor-grab touch-none rounded-lg p-1.5 text-lucina-muted hover:bg-lucina-surface hover:text-lucina-secondary active:cursor-grabbing"
           aria-label={`Drag ${item.name}`}
           {...attributes}
-          {...listeners}
         >
           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
@@ -231,7 +259,7 @@ export function ProjectsBoard() {
   const [dbError, setDbError] = useState('');
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+    useSensor(CardPointerSensor, { activationConstraint: { distance: 6 } })
   );
 
   const grouped = useMemo(() => groupByZone(items), [items]);
@@ -465,7 +493,8 @@ export function ProjectsBoard() {
         <div>
           <h1 className="text-4xl font-bold text-lucina-primary">Projects</h1>
           <p className="text-lucina-muted mt-2">
-            Drag projects across the board from Design to Complete, and share with your team.
+            Drag a card anywhere on the board — Design through Ready for Release to Complete — and
+            share with your team.
           </p>
         </div>
         <div className="flex items-center gap-3">
