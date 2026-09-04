@@ -115,7 +115,12 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS projects_select ON projects;
 CREATE POLICY projects_select ON projects FOR SELECT
-  USING (public.can_access_project(id));
+  -- Check ownership directly so INSERT ... RETURNING can see the row created by
+  -- the current statement. The STABLE helper's query snapshot cannot see it yet.
+  USING (
+    "ownerId" = (SELECT auth.uid())
+    OR public.can_access_project(id)
+  );
 
 DROP POLICY IF EXISTS projects_insert ON projects;
 CREATE POLICY projects_insert ON projects FOR INSERT
@@ -286,4 +291,19 @@ WHERE grantee = 'anon'
 -- SELECT count(*) AS visible_projects   FROM projects        WHERE id = '<PROJECT_ID>';
 -- SELECT count(*) AS visible_stories    FROM project_stories WHERE project_id = '<PROJECT_ID>';
 -- SELECT count(*) AS visible_notes      FROM project_notes   WHERE project_id = '<PROJECT_ID>';
+-- ROLLBACK;
+--
+-- (d) Project creation with PostgREST's INSERT ... RETURNING shape succeeds.
+-- BEGIN;
+-- SET LOCAL ROLE authenticated;
+-- SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+-- INSERT INTO projects (id, name, slug, description, "ownerId")
+-- VALUES (
+--   '00000000-0000-0000-0000-000000000002',
+--   'RLS creation check',
+--   'rls-creation-check',
+--   '',
+--   '00000000-0000-0000-0000-000000000001'
+-- )
+-- RETURNING id;
 -- ROLLBACK;
