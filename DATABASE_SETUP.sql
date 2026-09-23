@@ -126,6 +126,19 @@ CREATE TABLE IF NOT EXISTS project_notes (
 
 CREATE INDEX IF NOT EXISTS project_notes_projectId_idx ON project_notes("projectId");
 
+-- Project-specific links
+CREATE TABLE IF NOT EXISTS project_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  url TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_project_links_project_id ON project_links(project_id);
+
 -- Link Groups table (new structure for organized links)
 CREATE TABLE IF NOT EXISTS link_groups (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -345,4 +358,3 @@ EXECUTE FUNCTION update_updated_at_column();
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
 ORDER BY table_name;
-

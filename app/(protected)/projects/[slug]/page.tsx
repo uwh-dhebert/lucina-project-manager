@@ -14,6 +14,7 @@ import { SummaryTab } from '@/components/SummaryTab'
 import { TodoTab } from '@/components/TodoTab'
 import { ActionsMenu } from '@/components/ActionsMenu'
 import { ShareProjectModal } from '@/components/ShareProjectModal'
+import { ProjectLinksTab } from '@/components/ProjectLinksTab'
 
 interface Project {
   id: string
@@ -38,21 +39,10 @@ export default function ProjectDetailPage() {
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [designDocModalOpen, setDesignDocModalOpen] = useState(false)
   const [designDocRegenerate, setDesignDocRegenerate] = useState(false)
-  const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'todo' | 'design-doc' | 'stories'>('summary')
+  const [activeTab, setActiveTab] = useState<'summary' | 'notes' | 'links' | 'todo' | 'design-doc' | 'stories'>('summary')
   const [designDocContent, setDesignDocContent] = useState<string>('')
   const [designDocUpdatedAt, setDesignDocUpdatedAt] = useState<string | null>(null)
   const [isEditingDesignDoc, setIsEditingDesignDoc] = useState(false)
-
-  useEffect(() => {
-    loadProject()
-  }, [slug])
-
-  // Load design doc after project is loaded
-  useEffect(() => {
-    if (project?.id) {
-      loadDesignDoc()
-    }
-  }, [project?.id])
 
   const loadProject = async () => {
     try {
@@ -66,30 +56,51 @@ export default function ProjectDetailPage() {
           setError('Project not found')
         }
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load project')
     } finally {
       setLoading(false)
     }
   }
 
-  const loadDesignDoc = async () => {
-    try {
-      const response = await fetch(`/api/projects/${project?.id}/design-doc-save`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.designDoc?.content) {
-          setDesignDocContent(data.designDoc.content)
-          setDesignDocUpdatedAt(data.designDoc.updated_at ?? null)
-        } else {
-          setDesignDocContent('')
-          setDesignDocUpdatedAt(null)
-        }
-      }
-    } catch (err) {
-      console.error('Error loading design doc:', err)
+  useEffect(() => {
+    let active = true
+    fetch('/api/projects')
+      .then(async (response) => {
+        if (!response.ok || !active) return
+        const projects = await response.json()
+        const found = projects.find((item: Project) => item.slug === slug)
+        if (!active) return
+        if (found) setProject(found)
+        else setError('Project not found')
+      })
+      .catch(() => {
+        if (active) setError('Failed to load project')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
     }
-  }
+  }, [slug])
+
+  useEffect(() => {
+    if (!project?.id) return
+    let active = true
+    fetch(`/api/projects/${project.id}/design-doc-save`)
+      .then(async (response) => {
+        if (!response.ok || !active) return
+        const data = await response.json()
+        if (!active) return
+        setDesignDocContent(data.designDoc?.content ?? '')
+        setDesignDocUpdatedAt(data.designDoc?.updated_at ?? null)
+      })
+      .catch((err) => console.error('Error loading design doc:', err))
+    return () => {
+      active = false
+    }
+  }, [project?.id])
 
   const saveDesignDoc = async (content: string) => {
     if (!project?.id) return null
@@ -133,7 +144,7 @@ export default function ProjectDetailPage() {
       if (response.ok) {
         router.push('/projects')
       }
-    } catch (err) {
+    } catch {
       alert('Failed to delete project')
     }
   }
@@ -202,7 +213,7 @@ export default function ProjectDetailPage() {
 
       {/* Tabs */}
       <div className="space-y-6">
-        <div className="flex gap-4 border-b border-lucina-rose">
+        <div className="flex gap-4 overflow-x-auto border-b border-lucina-rose">
           <button
             onClick={() => setActiveTab('summary')}
             className={`px-6 py-3 font-semibold transition-colors ${
@@ -232,6 +243,16 @@ export default function ProjectDetailPage() {
             }`}
           >
             ✅ Todo
+          </button>
+          <button
+            onClick={() => setActiveTab('links')}
+            className={`px-6 py-3 font-semibold transition-colors ${
+              activeTab === 'links'
+                ? 'text-lucina-secondary border-b-2 border-lucina-secondary'
+                : 'text-lucina-muted hover:text-lucina-secondary'
+            }`}
+          >
+            🔗 Links
           </button>
           <button
             onClick={() => setActiveTab('design-doc')}
@@ -271,6 +292,12 @@ export default function ProjectDetailPage() {
         {activeTab === 'todo' && (
           <div className="bg-lucina-white border border-lucina-rose rounded-2xl p-6 min-h-96">
             <TodoTab projectId={project.id} />
+          </div>
+        )}
+
+        {activeTab === 'links' && (
+          <div className="bg-lucina-white border border-lucina-rose rounded-2xl p-6 min-h-96">
+            <ProjectLinksTab projectId={project.id} />
           </div>
         )}
 
@@ -358,7 +385,7 @@ export default function ProjectDetailPage() {
             <StoriesTab
               projectId={project.id}
               designDocContent={designDocContent}
-              onStoriesGenerated={(stories) => {
+              onStoriesGenerated={() => {
                 // Stories generated callback
               }}
             />
@@ -403,4 +430,3 @@ export default function ProjectDetailPage() {
      </div>
    )
  }
-

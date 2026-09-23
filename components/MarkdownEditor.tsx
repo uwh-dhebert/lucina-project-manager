@@ -1,7 +1,18 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
-import { Bold, Code, Eye, Heading2, Italic, Link2, List, ListOrdered, Pencil } from 'lucide-react';
+import { useEffect, useRef, useState, type ClipboardEvent, type ReactNode } from 'react';
+import {
+  Bold,
+  Code,
+  Eye,
+  Heading2,
+  ImagePlus,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Pencil,
+} from 'lucide-react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 type EditorTab = 'write' | 'preview' | 'split';
@@ -11,6 +22,7 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
   placeholder?: string;
   minRows?: number;
+  onImageUpload?: (file: File) => Promise<string>;
 }
 
 interface ToolbarAction {
@@ -36,9 +48,18 @@ export function MarkdownEditor({
   onChange,
   placeholder = 'Write in markdown...',
   minRows = 6,
+  onImageUpload,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const valueRef = useRef(value);
   const [tab, setTab] = useState<EditorTab>('write');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageError, setImageError] = useState('');
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   const applyFormatting = (action: ToolbarAction) => {
     const textarea = textareaRef.current;
@@ -59,6 +80,52 @@ export function MarkdownEditor({
       const cursor = start + insertion.length;
       textarea.setSelectionRange(cursor, cursor);
     });
+  };
+
+  const uploadImages = async (files: File[], insertionPoint?: number) => {
+    if (!onImageUpload || files.length === 0) return;
+
+    setUploadingImage(true);
+    setImageError('');
+    try {
+      const markdownImages: string[] = [];
+      for (const file of files) {
+        const url = await onImageUpload(file);
+        const alt = file.name.replace(/\.[^.]+$/, '') || 'Screenshot';
+        markdownImages.push(`![${alt}](${url})`);
+      }
+
+      const textarea = textareaRef.current;
+      const cursor = insertionPoint ?? textarea?.selectionStart ?? valueRef.current.length;
+      const currentValue = valueRef.current;
+      const prefix = cursor > 0 && currentValue[cursor - 1] !== '\n' ? '\n\n' : '';
+      const insertion = `${prefix}${markdownImages.join('\n\n')}\n`;
+      const nextValue = currentValue.slice(0, cursor) + insertion + currentValue.slice(cursor);
+      valueRef.current = nextValue;
+      onChange(nextValue);
+
+      requestAnimationFrame(() => {
+        textarea?.focus();
+        const nextCursor = cursor + insertion.length;
+        textarea?.setSelectionRange(nextCursor, nextCursor);
+      });
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : 'Failed to upload screenshot');
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onImageUpload) return;
+    const images = Array.from(event.clipboardData.files).filter((file) =>
+      file.type.startsWith('image/')
+    );
+    if (images.length === 0) return;
+
+    event.preventDefault();
+    void uploadImages(images, event.currentTarget.selectionStart);
   };
 
   const tabs: { id: EditorTab; label: string; icon: ReactNode }[] = [
@@ -82,6 +149,30 @@ export function MarkdownEditor({
               {action.icon}
             </button>
           ))}
+          {onImageUpload && (
+            <>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                title="Add screenshot"
+                disabled={uploadingImage}
+                className="rounded-md p-1.5 text-lucina-muted hover:bg-lucina-surface hover:text-lucina-primary transition-colors disabled:opacity-50"
+              >
+                <ImagePlus size={14} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                multiple
+                className="hidden"
+                onChange={(event) => void uploadImages(Array.from(event.target.files ?? []))}
+              />
+              {uploadingImage && (
+                <span className="self-center px-1 text-xs text-lucina-muted">Uploading...</span>
+              )}
+            </>
+          )}
         </div>
 
         <div className="flex rounded-lg border border-lucina-rose p-0.5">
@@ -102,12 +193,18 @@ export function MarkdownEditor({
           ))}
         </div>
       </div>
+      {imageError && (
+        <p className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          {imageError}
+        </p>
+      )}
 
       {tab === 'write' && (
         <textarea
           ref={textareaRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onPaste={handlePaste}
           placeholder={placeholder}
           rows={minRows}
           className="w-full resize-y bg-lucina-white px-4 py-3 font-mono text-sm text-lucina-primary placeholder-lucina-muted focus:outline-none"
@@ -126,6 +223,7 @@ export function MarkdownEditor({
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onPaste={handlePaste}
             placeholder={placeholder}
             rows={minRows}
             className="w-full resize-y border-b border-lucina-rose bg-lucina-white px-4 py-3 font-mono text-sm text-lucina-primary placeholder-lucina-muted focus:outline-none lg:border-b-0 lg:border-r"

@@ -40,6 +40,15 @@ export function MarkdownContent({ content, className = '' }: MarkdownContentProp
               {children}
             </a>
           ),
+          img: ({ src, alt }) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={src}
+              alt={alt ?? 'Note screenshot'}
+              loading="lazy"
+              className="my-3 max-h-[720px] max-w-full rounded-lg border border-lucina-rose object-contain"
+            />
+          ),
           ul: ({ children }) => <ul className="my-2 list-disc pl-5 space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="my-2 list-decimal pl-5 space-y-1">{children}</ol>,
           li: ({ children }) => <li>{children}</li>,

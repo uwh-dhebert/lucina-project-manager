@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2, Plus, Edit2, Check, X } from 'lucide-react';
 import { MarkdownEditor } from '@/components/MarkdownEditor';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -25,23 +25,39 @@ export function NotesTab({ projectId }: NotesTabProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadNotes();
-  }, [projectId]);
-
-  const loadNotes = async () => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/notes-save`);
-      if (response.ok) {
-        const data = await response.json();
-        setNotes(data.notes || []);
-      }
-    } catch (err) {
-      console.error('Error loading notes:', err);
-    } finally {
-      setIsLoading(false);
+  const uploadScreenshot = async (file: File) => {
+    setError(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`/api/projects/${projectId}/note-images`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      const message = data.error ?? 'Failed to upload screenshot';
+      setError(message);
+      throw new Error(message);
     }
+    return data.url as string;
   };
+
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/projects/${projectId}/notes-save`)
+      .then(async (response) => {
+        if (!response.ok || !active) return;
+        const data = await response.json();
+        if (active) setNotes(data.notes || []);
+      })
+      .catch((err) => console.error('Error loading notes:', err))
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   const handleAddNote = async () => {
     if (!newNoteText.trim()) {
@@ -134,6 +150,7 @@ export function NotesTab({ projectId }: NotesTabProps) {
           <MarkdownEditor
             value={newNoteText}
             onChange={setNewNoteText}
+            onImageUpload={uploadScreenshot}
             placeholder="Write a note in markdown..."
             minRows={5}
           />
@@ -170,6 +187,7 @@ export function NotesTab({ projectId }: NotesTabProps) {
                   <MarkdownEditor
                     value={editText}
                     onChange={setEditText}
+                    onImageUpload={uploadScreenshot}
                     placeholder="Edit note..."
                     minRows={5}
                   />

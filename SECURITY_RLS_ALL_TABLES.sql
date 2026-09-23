@@ -84,6 +84,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   project_members,
   project_stories,
   project_notes,
+  project_links,
   project_design_docs,
   project_todos,
   project_summaries,
@@ -98,6 +99,7 @@ REVOKE ALL ON
   project_members,
   project_stories,
   project_notes,
+  project_links,
   project_design_docs,
   project_todos,
   project_summaries,
@@ -173,6 +175,7 @@ BEGIN
     SELECT * FROM (VALUES
       ('project_stories',     'project_id'),
       ('project_notes',       'project_id'),
+      ('project_links',       'project_id'),
       ('project_design_docs', 'project_id'),
       ('project_todos',       'project_id'),
       ('project_summaries',   'project_id'),
@@ -264,6 +267,7 @@ FROM pg_class c
 LEFT JOIN pg_policy p ON p.polrelid = c.oid
 WHERE c.relname IN (
   'projects', 'project_members', 'project_stories', 'project_notes',
+  'project_links',
   'project_design_docs', 'project_todos', 'project_summaries',
   'generated_documents', 'chat_conversations', 'chat_messages',
   'story_recommendations'
