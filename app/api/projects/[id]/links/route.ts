@@ -2,13 +2,11 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { canAccessProject } from '@/lib/project-access';
 import { getErrorMessage } from '@/lib/errors';
-import {
-  ensureProjectLinksTable,
-  isProjectLinksTableMissingError,
-} from '@/lib/setup-project-links';
 import { createClient } from '@/utils/supabase/server';
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
+const MIGRATION_REQUIRED =
+  'Project links are not configured yet. Run PROJECT_LINKS.sql in the Supabase SQL Editor.';
 
 function isValidWebUrl(value: string): boolean {
   try {
@@ -44,16 +42,12 @@ export async function GET(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    try {
-      return NextResponse.json({ links: await listLinks(supabase, projectId) });
-    } catch (error) {
-      const message = getErrorMessage(error);
-      if (!isProjectLinksTableMissingError(message)) throw error;
-      await ensureProjectLinksTable();
-      return NextResponse.json({ links: await listLinks(supabase, projectId) });
-    }
+    return NextResponse.json({ links: await listLinks(supabase, projectId) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load links';
+    const message = getErrorMessage(error);
+    if (message.toLowerCase().includes('project_links')) {
+      return NextResponse.json({ error: MIGRATION_REQUIRED }, { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -100,16 +94,12 @@ export async function POST(
       return data;
     };
 
-    try {
-      return NextResponse.json({ link: await insert() }, { status: 201 });
-    } catch (error) {
-      const message = getErrorMessage(error);
-      if (!isProjectLinksTableMissingError(message)) throw error;
-      await ensureProjectLinksTable();
-      return NextResponse.json({ link: await insert() }, { status: 201 });
-    }
+    return NextResponse.json({ link: await insert() }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to add link';
+    const message = getErrorMessage(error);
+    if (message.toLowerCase().includes('project_links')) {
+      return NextResponse.json({ error: MIGRATION_REQUIRED }, { status: 503 });
+    }
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
