@@ -119,9 +119,13 @@ export function MarkdownEditor({
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
     if (!onImageUpload) return;
-    const images = Array.from(event.clipboardData.files).filter((file) =>
-      file.type.startsWith('image/')
-    );
+    const clipboardImages = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => file !== null);
+    const images = clipboardImages.length > 0
+      ? clipboardImages
+      : Array.from(event.clipboardData.files).filter((file) => file.type.startsWith('image/'));
     if (images.length === 0) return;
 
     event.preventDefault();
