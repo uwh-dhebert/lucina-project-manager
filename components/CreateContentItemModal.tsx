@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { MarkdownEditor } from '@/components/MarkdownEditor'
+import { uploadWikiImage } from '@/lib/wiki-image-upload'
 
 interface CreateContentItemModalProps {
   isOpen: boolean
@@ -38,6 +40,11 @@ export function CreateContentItemModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!content.trim()) {
+      setError('Content is required')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -59,8 +66,8 @@ export function CreateContentItemModal({
       setContent('')
       handleClose()
       onSuccess()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create content item')
     } finally {
       setLoading(false)
     }
@@ -103,14 +110,12 @@ export function CreateContentItemModal({
             <label className="block text-sm font-medium text-lucina-primary mb-2">
               Content
             </label>
-            <textarea
+            <MarkdownEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={setContent}
+              onImageUpload={(file) => uploadWikiImage(subjectId, file)}
               placeholder="Write your content here... (supports markdown)"
-              rows={10}
-              className="w-full px-4 py-2 border border-lucina-rose rounded-xl focus:outline-none focus:ring-2 focus:ring-lucina-secondary focus:border-transparent bg-lucina-surface text-lucina-primary placeholder-lucina-muted resize-none"
-              required
-              disabled={loading}
+              minRows={10}
             />
           </div>
         </div>
@@ -136,4 +141,3 @@ export function CreateContentItemModal({
     </dialog>
   )
 }
-

@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { MarkdownEditor } from '@/components/MarkdownEditor'
+import { uploadWikiImage } from '@/lib/wiki-image-upload'
 
 interface EditContentItemModalProps {
   isOpen: boolean
   contentItemId: string
   contentItemTitle?: string
   contentItemContent: string
+  subjectId: string
   onClose: () => void
   onSuccess: () => void
   onDelete: () => void
@@ -17,6 +20,7 @@ export function EditContentItemModal({
   contentItemId,
   contentItemTitle,
   contentItemContent,
+  subjectId,
   onClose,
   onSuccess,
   onDelete,
@@ -26,11 +30,6 @@ export function EditContentItemModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    setTitle(contentItemTitle || '')
-    setContent(contentItemContent)
-  }, [contentItemTitle, contentItemContent])
 
   useEffect(() => {
     if (isOpen) {
@@ -47,6 +46,11 @@ export function EditContentItemModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!content.trim()) {
+      setError('Content is required')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -64,8 +68,8 @@ export function EditContentItemModal({
 
       handleClose()
       onSuccess()
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update content')
     } finally {
       setLoading(false)
     }
@@ -83,7 +87,7 @@ export function EditContentItemModal({
         handleClose()
         onDelete()
       }
-    } catch (err) {
+    } catch {
       setError('Failed to delete content')
     } finally {
       setLoading(false)
@@ -127,14 +131,12 @@ export function EditContentItemModal({
             <label className="block text-sm font-medium text-lucina-primary mb-2">
               Content
             </label>
-            <textarea
+            <MarkdownEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write your content here..."
-              rows={10}
-              className="w-full px-4 py-2 border border-lucina-rose rounded-xl focus:outline-none focus:ring-2 focus:ring-lucina-secondary focus:border-transparent bg-lucina-surface text-lucina-primary placeholder-lucina-muted resize-none"
-              required
-              disabled={loading}
+              onChange={setContent}
+              onImageUpload={(file) => uploadWikiImage(subjectId, file)}
+              placeholder="Write your content here... (supports markdown)"
+              minRows={10}
             />
           </div>
         </div>
@@ -169,4 +171,3 @@ export function EditContentItemModal({
     </dialog>
   )
 }
-

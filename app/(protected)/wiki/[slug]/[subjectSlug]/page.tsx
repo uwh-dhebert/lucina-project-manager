@@ -2,9 +2,10 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CreateContentItemModal } from '@/components/CreateContentItemModal'
 import { EditContentItemModal } from '@/components/EditContentItemModal'
+import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 
 interface ContentItem {
   id: string
@@ -50,11 +51,7 @@ export default function SubjectDetailPage() {
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null)
   const [editModalOpen, setEditModalOpen] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [topicSlug, subjectSlug])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const response = await fetch('/api/wiki')
       if (response.ok) {
@@ -78,13 +75,18 @@ export default function SubjectDetailPage() {
       } else {
         setError('Failed to load data')
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load subject')
     } finally {
       setLoading(false)
     }
-  }
+  }, [topicSlug, subjectSlug])
 
+  useEffect(() => {
+    // loadData updates state only after its asynchronous request completes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadData()
+  }, [loadData])
 
 
   const handleDeleteSubject = async () => {
@@ -100,7 +102,7 @@ export default function SubjectDetailPage() {
       } else {
         alert('Failed to delete subject')
       }
-    } catch (err) {
+    } catch {
       alert('Failed to delete subject')
     }
   }
@@ -188,7 +190,7 @@ export default function SubjectDetailPage() {
                   {item.title && (
                     <h3 className="text-lg font-semibold text-lucina-primary mb-2">{item.title}</h3>
                   )}
-                  <p className="text-lucina-secondary whitespace-pre-wrap">{item.content}</p>
+                  <MarkdownRenderer content={item.content} />
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
@@ -251,10 +253,12 @@ export default function SubjectDetailPage() {
       {/* Edit Content Modal */}
       {editingItem && (
         <EditContentItemModal
+          key={editingItem.id}
           isOpen={editModalOpen}
           contentItemId={editingItem.id}
           contentItemTitle={editingItem.title}
           contentItemContent={editingItem.content}
+          subjectId={subject.id}
           onClose={() => {
             setEditModalOpen(false)
             setEditingItem(null)
@@ -274,4 +278,3 @@ export default function SubjectDetailPage() {
     </div>
   )
 }
-
